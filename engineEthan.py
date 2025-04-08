@@ -4,7 +4,6 @@ import os
 
 cree_fenetre(960, 540)
 
-print(os.listdir("tuiles"))
 
 def cree_dico(chemin):
     dico = {}
@@ -17,21 +16,27 @@ def noOutOfRange(grille, i, j, nom, dico):
     positions_possibles = []
     if i < 0 or i >= len(grille) or j < 0 or j >= len(grille[0]):
         return False  # La case actuelle est hors des limites
-    voisins = [
-        (i - 1, j),  # Haut
-        (i + 1, j),  # Bas
-        (i, j - 1),  # Gauche
-        (i, j + 1)   # Droite
-    ]
-    for vi, vj in voisins:
+    voisins = {
+        "Haut": (i - 1, j),
+        "Bas": (i + 1, j),
+        "Gauche": (i, j - 1),
+        "Droite": (i, j + 1)
+    }
+    for direction, (vi, vj) in voisins.items():
         if 0 <= vi < len(grille) and 0 <= vj < len(grille[0]):
-            positions_possibles.append((vi, vj))  # Ajoute les positions valides
+            positions_possibles.append({direction: (vi, vj)})  # Ajoute les positions valides avec direction
     return positions_possibles
-grille = [[None for _ in range(10)] for _ in range(10)]
-print(grille)
 
+
+def emplacement_valide(grille, i, j, nom, dico, positions_possibles):
+    for pos in positions_possibles:
+        nomTuile = grille[pos[0]][pos[1]]
+
+    pass
 
 dico = cree_dico("tuiles")
+grille = [[None for _ in range(10)] for _ in range(10)]
+
 while True:
     ev = attend_ev()
     tev = type_ev(ev)
