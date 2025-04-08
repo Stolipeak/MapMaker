@@ -48,14 +48,22 @@ def emplacement_valide(grille, i, j, nom, dico):
                 return False
     return True
 
+def tuiles_possibles(grille, i, j, dico):
+    tuilesPoss = []
+    for tuile in dico:
+        if emplacement_valide(grille, i, j, tuile, dico):
+            tuilesPoss.append(tuile)
+    return tuilesPoss
+
+
+
+
 dico = cree_dico("tuiles")
 grille = [[None for _ in range(10)] for _ in range(10)]
-grille[1][0] = "FFMF"
-grille[1][2] = "FFMF"
+
+
 for g in grille:
     print(g)
-
-
 while True:
     ev = attend_ev()
     tev = type_ev(ev)
