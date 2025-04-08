@@ -28,14 +28,35 @@ def noOutOfRange(grille, i, j, nom, dico):
     return positions_possibles
 
 
-def emplacement_valide(grille, i, j, nom, dico, positions_possibles):
-    for position in positions_possibles:
-        for direction, coords in position.items():
-            print(f"Direction: {direction}, Coordinates: {coords}")
+def emplacement_valide(grille, i, j, nom, dico):
+    positions_possibles = noOutOfRange(grille, i, j, nom, dico)
+    for posName in positions_possibles:
+        nomGrille = grille[positions_possibles[posName][0]][positions_possibles[posName][1]]
+        if posName == "Haut":
+            if nomGrille[2]  != nom[0]:
+                return False
+        elif posName == "Droite":
+            if nomGrille[3] != nom[1]:
+                return False
+        elif posName == "Bas":
+            if nomGrille[0] != nom[2]:
+                return False
+        else:
+            if nomGrille[1] != nom[3]:
+                return False
+    return True
 
 dico = cree_dico("tuiles")
 grille = [[None for _ in range(10)] for _ in range(10)]
-print(noOutOfRange(grille, 0, 0, "tuiles", dico))
+grille[0][1] = "FFFM"
+grille[1][0] = "FFMF"
+grille[2][1] = "FFFM"
+grille[1][2] = "FFMF"
+for g in grille:
+    print(g)
+
+print(emplacement_valide(grille, 1, 1, "FFFF", dico))
+
 while True:
     ev = attend_ev()
     tev = type_ev(ev)
