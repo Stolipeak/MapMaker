@@ -32,8 +32,10 @@ def emplacement_valide(grille, i, j, nom, dico):
     positions_possibles = noOutOfRange(grille, i, j, nom, dico)
     for posName in positions_possibles:
         nomGrille = grille[positions_possibles[posName][0]][positions_possibles[posName][1]]
+        if nomGrille is None:
+            continue  # Si la case est None, on la considère comme valide
         if posName == "Haut":
-            if nomGrille[2]  != nom[0]:
+            if nomGrille[2] != nom[0]:
                 return False
         elif posName == "Droite":
             if nomGrille[3] != nom[1]:
@@ -48,14 +50,11 @@ def emplacement_valide(grille, i, j, nom, dico):
 
 dico = cree_dico("tuiles")
 grille = [[None for _ in range(10)] for _ in range(10)]
-grille[0][1] = "FFFM"
 grille[1][0] = "FFMF"
-grille[2][1] = "FFFM"
 grille[1][2] = "FFMF"
 for g in grille:
     print(g)
 
-print(emplacement_valide(grille, 1, 1, "FFFF", dico))
 
 while True:
     ev = attend_ev()
