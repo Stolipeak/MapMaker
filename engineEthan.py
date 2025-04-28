@@ -1,75 +1,55 @@
 from fltk import *
-import os
 
+# Play the theme music in a loop
+son("media/theme.mp3", boucle=True)
 
-cree_fenetre(960, 540)
+cree_fenetre(600, 600)
 
+# Background
+rectangle(0, 0, 600, 600, couleur='sky blue', remplissage='sky blue')
 
-def cree_dico(chemin):
-    dico = {}
-    for nom in os.listdir(chemin):
-        if nom.endswith(".png"):
-            dico[os.path.splitext(nom)[0]] = chemin + "/" + nom
-    return dico
+# Coordinates for 30 clouds
+cloud_positions = [
+    (10, 10), (50, 50), (100, 100), (150, 150), (200, 200),
+    (250, 250), (300, 300), (350, 350), (400, 400), (450, 450),
+    (500, 10), (10, 500), (50, 450), (100, 400), (150, 350),
+    (200, 300), (250, 200), (300, 100), (350, 50), (400, 10),
+    (450, 100), (500, 200), (10, 300), (50, 400), (100, 500),
+    (150, 450), (200, 400), (250, 350), (300, 250), (350, 150)
+]
 
-def noOutOfRange(grille, i, j, nom, dico):
-    positions_possibles = {}
-    if i < 0 or i >= len(grille) or j < 0 or j >= len(grille[0]):
-        return False  # La case actuelle est hors des limites
-    voisins = {
-        "Haut": (i - 1, j),
-        "Bas": (i + 1, j),
-        "Gauche": (i, j - 1),
-        "Droite": (i, j + 1)
-    }
-    for direction, (vi, vj) in voisins.items():
-        if 0 <= vi < len(grille) and 0 <= vj < len(grille[0]):
-            positions_possibles[direction] = (vi, vj)  # Ajoute les positions valides avec direction
-    return positions_possibles
+# Draw the clouds
+for x, y in cloud_positions:
+    image(x, y, "media/cloud.png", largeur=80, hauteur=80, ancrage='nw')
 
+# Logo and buttons
+image(300, 100, "media/logoMM.png", largeur=300, hauteur=300, ancrage='center')
 
-def emplacement_valide(grille, i, j, nom, dico):
-    positions_possibles = noOutOfRange(grille, i, j, nom, dico)
-    for posName in positions_possibles:
-        nomGrille = grille[positions_possibles[posName][0]][positions_possibles[posName][1]]
-        if nomGrille is None:
-            continue  # Si la case est None, on la considère comme valide
-        if posName == "Haut":
-            if nomGrille[2] != nom[0]:
-                return False
-        elif posName == "Droite":
-            if nomGrille[3] != nom[1]:
-                return False
-        elif posName == "Bas":
-            if nomGrille[0] != nom[2]:
-                return False
-        else:
-            if nomGrille[1] != nom[3]:
-                return False
-    return True
+rectangle(200, 250, 400, 300, couleur='black', remplissage='white', epaisseur=2)
+texte(300, 275, "MapMaker", couleur='black', taille=16, ancrage='center')
 
-def tuiles_possibles(grille, i, j, dico):
-    tuilesPoss = []
-    for tuile in dico:
-        if emplacement_valide(grille, i, j, tuile, dico):
-            tuilesPoss.append(tuile)
-    return tuilesPoss
+rectangle(200, 310, 400, 360, couleur='black', remplissage='white', epaisseur=2)
+texte(300, 335, "MapViewer", couleur='black', taille=16, ancrage='center')
 
-
-
-
-dico = cree_dico("tuiles")
-grille = [[None for _ in range(10)] for _ in range(10)]
-
-
-for g in grille:
-    print(g)
+# Event loop
 while True:
     ev = attend_ev()
     tev = type_ev(ev)
-    if tev == "CliqueGauche":
-        pass
-    elif tev == "Quitte":
+    if tev == 'Quitte':
         break
+    elif tev == 'ClicGauche':
+        x, y = abscisse(ev), ordonnee(ev)
+        if 200 <= x <= 400 and 300 >= y >= 250:
+            print("MapMaker")
+        elif 200 <= x <= 400 and 360 >= y >= 310:
+            print("MapViewer")
+
+        print(f"Clic gauche à ({x}, {y})")
+    elif tev == 'ClicDroit':
+        x, y = abscisse(ev), ordonnee(ev)
+        print(f"Clic droit à ({x}, {y})")
+    elif tev == 'Touche':
+        t = touche(ev)
+        print(f"Touche pressée : {t}")
     mise_a_jour()
 ferme_fenetre()
