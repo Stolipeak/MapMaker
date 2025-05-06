@@ -34,6 +34,9 @@ class MapMaker:
         self.position_menu = (0, 0)
         self.choix_possibles = []
         self.case_choisie = None
+        self.message_status = ""  # Message de statut
+        self.timer_status = 0  # Compteur pour le message
+        self.couleur_status = "green"  # Couleur par défaut du message
 
         cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)
 
@@ -103,6 +106,29 @@ class MapMaker:
 
         return False
 
+    def afficher_message_status(self, message, duree=100, couleur="green"):
+        """Affiche un message de statut pour une durée donnée avec une couleur."""
+        self.message_status = message
+        self.timer_status = duree
+        self.couleur_status = couleur
+
+    def dessiner_message_status(self):
+        """Dessine un rectangle en haut à droite qui reste toujours visible."""
+
+        # Descendre le titre
+        texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, 110, "Message Système",
+              couleur='black', taille=14, ancrage='center', police='bold')
+
+        # Descendre le rectangle
+        rectangle(LARGEUR_FENETRE + 10, 140, LARGEUR_TOTALE - 10, 210, couleur='black', remplissage='white',
+                  epaisseur=2)
+
+        # Descendre le message
+        if self.timer_status > 0:
+            texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, 175, self.message_status,
+                  couleur=self.couleur_status, taille=16, ancrage='center', police='bold')
+            self.timer_status -= 1  # Réduit le compteur
+
     def dessiner(self):
         # affiche la grille de tuiles
         for i in range(NB_CASES):
@@ -118,7 +144,13 @@ class MapMaker:
 
         # Dessiner la barre latérale
         rectangle(LARGEUR_FENETRE, 0, LARGEUR_TOTALE, HAUTEUR_FENETRE, couleur='black', remplissage='white')
-        texte(LARGEUR_FENETRE + 10, 10, "Barre latérale", couleur='black', taille=16)
+        image((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, 50, "media/logoMM.png", largeur=120, hauteur=120, ancrage='center')
+
+        # Bouton "Ajout Décors"
+        rectangle(LARGEUR_FENETRE + 10, HAUTEUR_FENETRE // 2 - 25, LARGEUR_TOTALE - 10, HAUTEUR_FENETRE // 2 + 25,
+                  couleur='black', remplissage='white', epaisseur=2)
+        texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, HAUTEUR_FENETRE // 2, "Ajout Décors",
+              couleur='black', taille=16, ancrage='center')
 
     def dessiner_menu(self):
         # montre les choix de tuiles si besoin
@@ -173,23 +205,35 @@ class MapMaker:
             efface_tout()
             self.dessiner()
             self.dessiner_menu()
+            self.dessiner_message_status()  # Affiche le message de statut
 
             ev = donne_ev()
             if type_ev(ev) == 'Quitte':
                 break
             elif type_ev(ev) == 'ClicGauche':
-                self.gerer_clic(abscisse(ev), ordonnee(ev), 1)
+                x, y = abscisse(ev), ordonnee(ev)
+                if LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10 and \
+                   HAUTEUR_FENETRE // 2 - 25 <= y <= HAUTEUR_FENETRE // 2 + 25:
+                    print("Bouton 'Ajout Décors' cliqué !")
+                else:
+                    self.gerer_clic(x, y, 1)
             elif type_ev(ev) == 'ClicDroit':
                 self.gerer_clic(abscisse(ev), ordonnee(ev), 3)
             elif type_ev(ev) == 'Touche':
                 t = touche(ev)
                 if t == 'a':
                     if self.remplir_auto():
-                        print("Carte remplie correctement  !")
+                        print("Carte remplie correctement !")
+                        self.afficher_message_status("Carte remplie \n correctement !", duree=200, couleur="green")
                     else:
                         print("Pas moyen de remplir la carte :(")
+                        self.afficher_message_status("Pas moyen de \n remplir la carte :(", duree=200, couleur="red")
                 elif t == 'c':
+                    # Réinitialiser la grille
                     self.grille = [[None for _ in range(NB_CASES)] for _ in range(NB_CASES)]
+                    # Réinitialiser le message de statut
+                    self.message_status = ""
+                    self.timer_status = 0
 
             mise_a_jour()
 
