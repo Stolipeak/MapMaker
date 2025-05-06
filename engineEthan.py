@@ -2,12 +2,12 @@ from fltk import *
 import winsound
 import time
 
+# Lancer la musique au démarrage
 winsound.PlaySound("media/nouveauTheme.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
 cree_fenetre(600, 600)
 
 # Background
 rectangle(0, 0, 600, 600, couleur='sky blue', remplissage='sky blue')
-
 
 cloud_positions = [
     (20, 20), (100, 50), (200, 100), (300, 150), (400, 200),
@@ -22,27 +22,23 @@ cloud_positions = [
     (350, 50), (450, 20), (550, 100), (20, 200), (100, 300)
 ]
 
-# Draw the clouds
+# Dessiner les nuages
 for x, y in cloud_positions:
     image(x, y, "media/cloud.png", largeur=80, hauteur=80, ancrage='nw')
 
-# Logo and buttons
+# Logo et boutons
 image(300, 100, "media/logoMM.png", largeur=300, hauteur=300, ancrage='center')
 
-# MapMaker
+# Bouton MapMaker
 rectangle(200, 290, 400, 340, couleur='black', remplissage='white', epaisseur=2)
 texte(300, 315, "MapMaker", couleur='black', taille=16, ancrage='center')
 
-
+# Bouton pour activer/désactiver le son
 rectangle(550, 2, 600, 52, couleur='black', remplissage='white', epaisseur=2)
 image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
 isSound = True
 
-
-
-
-
-# Event loop
+# Boucle d'événements
 while True:
     ev = attend_ev()
     tev = type_ev(ev)
@@ -57,12 +53,12 @@ while True:
         elif 550 <= x <= 600 and 52 >= y >= 2:
             if isSound:
                 isSound = False
-                winsound.PlaySound(None, winsound.SND_PURGE)
+                winsound.PlaySound(None, winsound.SND_ASYNC)  # Arrêter la musique proprement
                 efface("isSound")
                 image(575, 27, "media/stopSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
             else:
                 isSound = True
-                winsound.PlaySound("media/themeMM.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+                winsound.PlaySound("media/nouveauTheme.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
                 efface("isSound")
                 image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
                 print("Reprise de la musique")
