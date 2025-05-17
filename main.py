@@ -1,6 +1,7 @@
 from fltk import *
 import os
 import random
+import winsound
 
 # paramètres de base
 TAILLE_CASE = 64
@@ -37,8 +38,89 @@ class MapMaker:
         self.message_status = ""  # Message de statut
         self.timer_status = 0  # Compteur pour le message
         self.couleur_status = "green"  # Couleur par défaut du message
+        self.menu = "acc"
 
-        cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)
+    def setMenu(self):
+        if self.menu == "acc":
+            cree_fenetre(600, 600)
+            efface_tout()
+            # Lancer la musique au démarrage
+            winsound.PlaySound("media/nouveauTheme.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+            # Background
+            rectangle(0, 0, 600, 600, couleur='sky blue', remplissage='sky blue')
+
+            cloud_positions = [
+                (20, 20), (100, 50), (200, 100), (300, 150), (400, 200),
+                (500, 250), (50, 300), (150, 350), (250, 400), (350, 450),
+                (450, 500), (550, 50), (20, 550), (100, 500), (200, 450),
+                (300, 400), (400, 350), (500, 300), (50, 200), (150, 100),
+                (250, 50), (350, 20), (450, 100), (550, 200), (20, 300),
+                (100, 400), (200, 500), (300, 550), (400, 500), (500, 400),
+                (50, 150), (150, 50), (250, 20), (350, 100), (450, 200),
+                (550, 300), (20, 400), (100, 450), (200, 550), (300, 500),
+                (400, 450), (500, 350), (50, 250), (150, 200), (250, 150),
+                (350, 50), (450, 20), (550, 100), (20, 200), (100, 300)
+            ]
+
+            # Dessiner les nuages
+            for x, y in cloud_positions:
+                image(x, y, "media/cloud.png", largeur=80, hauteur=80, ancrage='nw')
+
+            # Logo et boutons
+            image(300, 100, "media/logoMM.png", largeur=300, hauteur=300, ancrage='center')
+
+            # Bouton MapMaker
+            rectangle(200, 290, 400, 340, couleur='black', remplissage='white', epaisseur=2)
+            texte(300, 315, "MapMaker", couleur='black', taille=16, ancrage='center')
+
+            # Bouton pour activer/désactiver le son
+            rectangle(550, 2, 600, 52, couleur='black', remplissage='white', epaisseur=2)
+            image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
+            isSound = True
+
+            while True:
+                ev = attend_ev()
+                tev = type_ev(ev)
+                if tev == 'Quitte':
+                    break
+                elif tev == 'ClicGauche':
+                    x, y = abscisse(ev), ordonnee(ev)
+                    if 200 <= x <= 400 and 340 >= y >= 290:
+                        print("MapMaker")
+                        self.menu = "MapMaker"
+                        ferme_fenetre()  # Fermer la fenêtre d'abord
+                        cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)  # Puis créer la nouvelle
+                        self.boucle_principale()
+                        return
+                    elif 550 <= x <= 600 and 52 >= y >= 2:
+                        if isSound:
+                            isSound = False
+                            winsound.PlaySound(None, winsound.SND_ASYNC)
+                            efface("isSound")
+                            image(575, 27, "media/stopSound.png", largeur=20, hauteur=20, ancrage='center',
+                                  tag="isSound")
+                        else:
+                            isSound = True
+                            winsound.PlaySound("media/nouveauTheme.wav",
+                                               winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+                            efface("isSound")
+                            image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
+                            print("Reprise de la musique")
+
+                    print(f"Clic gauche à ({x}, {y})")
+                elif tev == 'ClicDroit':
+                    x, y = abscisse(ev), ordonnee(ev)
+                    print(f"Clic droit à ({x}, {y})")
+                elif tev == 'Touche':
+                    t = touche(ev)
+                    print(f"Touche pressée : {t}")
+                mise_a_jour()
+            ferme_fenetre()
+        else:
+            # Si ce n'est pas le menu d'accueil, créez directement la fenêtre principale
+            cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)
+            self.boucle_principale()
+
 
     def charger_tuiles(self, dossier):
         # on scanne le dossier et on prend toutes les images de tuiles valides
@@ -50,6 +132,7 @@ class MapMaker:
                     if len(nom) == 4:
                         tuiles[nom] = os.path.join(dossier, fichier)
         return tuiles
+
 
     def case_ok(self, i, j, code):
         # regarde si une tuile peut être posée à la position (i, j)
@@ -152,14 +235,29 @@ class MapMaker:
         texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, HAUTEUR_FENETRE // 2, "Ajout Décors",
               couleur='black', taille=16, ancrage='center')
 
+        # Grand rectangle principal
+        rectangle(650, 360, 830, 630, couleur="black", remplissage='white', epaisseur=2)
+        # Lignes horizontales pour diviser en 6 rangées
+        ligne(650, 405, 830, 405, couleur="black", epaisseur=1)  # 1ère ligne horizontale
+        ligne(650, 450, 830, 450, couleur="black", epaisseur=1)  # 2ème ligne horizontale
+        ligne(650, 495, 830, 495, couleur="black", epaisseur=1)  # 3ème ligne horizontale
+        ligne(650, 540, 830, 540, couleur="black", epaisseur=1)  # 4ème ligne horizontale
+        ligne(650, 585, 830, 585, couleur="black", epaisseur=1)  # 5ème ligne horizontale
+
+
     def dessiner_menu(self):
         # montre les choix de tuiles si besoin
         if not self.menu_visible:
             return
 
         x, y = self.position_menu
-        largeur = 180
 
+
+
+
+
+
+        """largeur = 180
         for idx, t in enumerate(self.choix_possibles[:10]):
             yopt = y + 10 + idx * 30
             rectangle(x + 5, yopt - 5, x + largeur - 5, yopt + 25, couleur='black', remplissage='white', epaisseur=2)
@@ -168,7 +266,7 @@ class MapMaker:
                 try:
                     image(x + largeur - 30, yopt + 10, self.tuiles[t], largeur=30, hauteur=30, ancrage='center')
                 except:
-                    pass
+                    pass"""
 
     def gerer_clic(self, x, y, bouton):
         # clic gauche ou droit sur la grille
@@ -212,6 +310,7 @@ class MapMaker:
                 break
             elif type_ev(ev) == 'ClicGauche':
                 x, y = abscisse(ev), ordonnee(ev)
+                print(x,y)
                 if LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10 and \
                    HAUTEUR_FENETRE // 2 - 25 <= y <= HAUTEUR_FENETRE // 2 + 25:
                     print("Bouton 'Ajout Décors' cliqué !")
@@ -242,4 +341,4 @@ class MapMaker:
 
 if __name__ == "__main__":
     app = MapMaker()
-    app.boucle_principale()
+    app.setMenu()
