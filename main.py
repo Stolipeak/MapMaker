@@ -31,7 +31,7 @@ class MapMaker:
         self.grille = [[None for _ in range(NB_CASES)] for _ in range(NB_CASES)]
         self.tuiles = self.charger_tuiles("tuiles")
         self.selection = None
-        self.menu_visible = False
+        self.menuVisible = False
         self.position_menu = (0, 0)
         self.choixPossibles = []
         self.caseChoisie = None
@@ -39,6 +39,10 @@ class MapMaker:
         self.timer_status = 0  # Compteur pour le message
         self.couleur_status = "green"  # Couleur par défaut du message
         self.menu = "acc"
+        # Attributs pour la navigation
+        self.indice = 0
+        self.nbPages = 0
+        self.tuiles_par_page = 5  # Changement de 6 à 5 tuiles par page
 
     def setMenu(self):
         if self.menu == "acc":
@@ -246,95 +250,132 @@ class MapMaker:
 
     def dessiner_menu(self):
         # montre les choix de tuiles si besoin
-        if not self.menu_visible:
+        if not self.menuVisible or not self.choixPossibles:
             return
 
-        # Grand rectangle principal déjà dessiné dans dessiner()
+        # Calculer la page actuelle et les indices
+        page_actuelle = self.indice // 6
+        debut = page_actuelle * 6
+        fin = min(debut + 6, len(self.choixPossibles))
 
-        # Afficher les tuiles possibles par page
-        if self.choixPossibles:
-            page_actuelle = self.indice // 6
-            debut = page_actuelle * 6
-            fin = min(debut + 6, len(self.choixPossibles))
+        # Afficher le numéro de page en haut du rectangle
+        if self.nbPages > 1:
+            texte(740, 350, f"Page {page_actuelle + 1}/{self.nbPages}",
+                  couleur='black', taille=10, ancrage='center')
 
-            # Numéro de page
-            if len(self.choixPossibles) > 6:
-                texte(740, 375, f"Page {page_actuelle + 1}/{self.nbPages}",
-                      couleur='black', taille=12, ancrage='center')
+        # Calculer la hauteur de chaque section
+        hauteur_section = (630 - 360) / 6  # 45 pixels
 
-            # Afficher jusqu'à 6 tuiles par page
-            for idx, t in enumerate(self.choixPossibles[debut:fin]):
-                y_pos = 382 + (idx * 45)  # Position verticale de chaque élément
-                rectangle(660, y_pos, 820, y_pos + 40, couleur='black', remplissage='light gray', epaisseur=1)
-                texte(670, y_pos + 10, t, couleur='black', taille=12, ancrage='nw')
+        # Afficher jusqu'à 6 tuiles, une par section
+        for idx, position in enumerate(range(debut, fin)):
+            if position < len(self.choixPossibles):
+                code_tuile = self.choixPossibles[position]
 
-                if t in self.tuiles:
+                # Calculer la position Y du centre de la section
+                y_base = 360 + (idx * hauteur_section)
+                y_centre = y_base + (hauteur_section / 2)
+
+                # Afficher le code de la tuile
+                texte(665, y_centre, code_tuile, couleur='black', taille=10, ancrage='w')
+
+                # Afficher la miniature de la tuile
+                if code_tuile in self.tuiles:
                     try:
-                        image(795, y_pos + 20, self.tuiles[t], largeur=40, hauteur=40, ancrage='center')
+                        image(795, y_centre, self.tuiles[code_tuile],
+                              largeur=35, hauteur=35, ancrage='center')
                     except:
-                        texte(795, y_pos + 20, "?", couleur='red', taille=20, ancrage='center')
+                        texte(795, y_centre, "?", couleur='red', taille=16, ancrage='center')
 
-            # Boutons de navigation
-            if self.nbPages > 1:
-                # Bouton précédent
-                if page_actuelle > 0:
-                    rectangle(660, 598, 730, 620, couleur='black', remplissage='light blue', epaisseur=1)
-                    texte(695, 609, "Précédent", couleur='black', taille=10, ancrage='center')
+        # Flèches de navigation en bas du rectangle (gauche et droite)
+        if self.nbPages > 1:
+            # Flèche gauche (page précédente)
+            if page_actuelle > 0:
+                # Rectangle contenant la flèche gauche
+                rectangle(660, 605, 710, 625, couleur="black", remplissage="lightgray")
+                # Triangle pour la flèche
+                polygone([(670, 615), (680, 605), (680, 625)], couleur="black", remplissage="black")
 
-                # Bouton suivant
-                if page_actuelle < self.nbPages - 1:
-                    rectangle(750, 598, 820, 620, couleur='black', remplissage='light blue', epaisseur=1)
-                    texte(785, 609, "Suivant", couleur='black', taille=10, ancrage='center')
-
-    def afficheTuilesPossibles(self, x, y, bouton):
+            # Flèche droite (page suivante)
+            if page_actuelle < self.nbPages - 1:
+                # Rectangle contenant la flèche droite
+                rectangle(770, 605, 820, 625, couleur="black", remplissage="lightgray")
+                # Triangle pour la flèche
+                polygone([(810, 615), (800, 605), (800, 625)], couleur="black", remplissage="black")
+    def afficheTuilesPossibles(self, i, j, bouton):
         """Prépare l'affichage des tuiles possibles pour une case donnée."""
-        self.choixPossibles = self.tuilesPossibles(x, y)
-        self.caseChoisie = (x, y)
-        self.indice = 0
+        self.choixPossibles = self.tuilesPossibles(i, j)
+        self.caseChoisie = (i, j)
+        self.indice = 0  # Commence à la première page
         self.nbPages = (len(self.choixPossibles) + 5) // 6  # Nombre de pages nécessaires
-        self.menu_visible = True
-        self.position_menu = (LARGEUR_FENETRE + 10, 360)  # Positionne le menu dans la barre latérale
+        self.menuVisible = True
 
         if len(self.choixPossibles) > 0:
-            self.afficher_message_status(f"Tuiles possibles : {len(self.choixPossibles)}", duree=200, couleur="green")
-            print("Tuiles possibles : ", self.choixPossibles)
+            self.afficher_message_status(f"Case ({j},{i}): {len(self.choixPossibles)} \n tuiles possibles",
+                                         duree=200, couleur="green")
         else:
-            self.afficher_message_status("Aucune tuile possible", duree=200, couleur="red")
-            print("Aucune tuile possible")
+            self.afficher_message_status("Aucune tuile \n possible",
+                                         duree=200, couleur="red")
 
     def gerer_clic(self, x, y, bouton):
         # clic gauche ou droit sur la grille
         i, j = y // TAILLE_CASE, x // TAILLE_CASE
 
-        # Si le clic est dans la barre latérale
-        if x >= LARGEUR_FENETRE:
-            if self.menu_visible and bouton == 1:
-                # Vérifier si le clic est sur une des tuiles du menu
-                page_actuelle = self.indice // 6
-                debut = page_actuelle * 6
-                fin = min(debut + 6, len(self.choixPossibles))
+        # Gestion des flèches de navigation dans le rectangle
+        if self.menuVisible and bouton == 1:
+            page_actuelle = self.indice // 6
 
-                # Vérifier les boutons de navigation
-                if 598 <= y <= 620:
-                    if 660 <= x <= 730 and page_actuelle > 0:  # Bouton précédent
-                        self.indice = max(0, self.indice - 6)
-                        return
-                    elif 750 <= x <= 820 and page_actuelle < self.nbPages - 1:  # Bouton suivant
-                        self.indice = min(len(self.choixPossibles) - 1, self.indice + 6)
+            # Vérifier si le clic est sur une des flèches de navigation
+            if 605 <= y <= 625:
+                # Flèche gauche (précédent)
+                if 660 <= x <= 710 and page_actuelle > 0:
+                    self.indice = max(0, self.indice - 6)
+                    return
+
+                # Flèche droite (suivant)
+                if 770 <= x <= 820 and page_actuelle < self.nbPages - 1:
+                    self.indice = min(self.indice + 6, len(self.choixPossibles) - 1)
+                    return
+
+            # Clic sur une tuile dans une section
+            if 650 <= x <= 830 and 360 <= y <= 600:  # Limité pour éviter de cliquer sur les flèches
+                hauteur_section = (630 - 360) / 6
+                section = int((y - 360) // hauteur_section)
+
+                if 0 <= section < 6:
+                    index_tuile = page_actuelle * 6 + section
+
+                    if index_tuile < len(self.choixPossibles) and self.caseChoisie:
+                        ci, cj = self.caseChoisie
+                        code_tuile = self.choixPossibles[index_tuile]
+
+                        if self.poser(ci, cj, code_tuile):
+                            self.afficher_message_status(f"Tuile {code_tuile} posée", duree=100, couleur="green")
+                        else:
+                            self.afficher_message_status("Impossible de poser cette tuile", duree=100, couleur="red")
+
+                        self.menuVisible = False
+                        self.caseChoisie = None
                         return
 
-                # Vérifier les clics sur les tuiles
-                for idx in range(fin - debut):
-                    y_pos = 382 + (idx * 45)
-                    if 660 <= x <= 820 and y_pos <= y <= y_pos + 40:
-                        tuile_idx = debut + idx
-                        if tuile_idx < len(self.choixPossibles) and self.caseChoisie:
-                            ci, cj = self.caseChoisie
-                            self.poser(ci, cj, self.choixPossibles[tuile_idx])
-                            self.menu_visible = False
-                            self.caseChoisie = None
-                            return
-            return
+        # Si le clic est sur la grille
+        if 0 <= i < NB_CASES and 0 <= j < NB_CASES and x < LARGEUR_FENETRE:
+            if bouton == 1:  # Clic gauche
+                self.afficheTuilesPossibles(i, j, bouton)
+            elif bouton == 3:  # Clic droit
+                self.retirer(i, j)
+                self.menuVisible = False
+                self.caseChoisie = None
+
+
+        # Si le clic est sur la grille
+        if 0 <= i < NB_CASES and 0 <= j < NB_CASES and x < LARGEUR_FENETRE:
+            if bouton == 1:  # Clic gauche
+                self.afficheTuilesPossibles(i, j, bouton)
+            elif bouton == 3:  # Clic droit
+                self.retirer(i, j)
+                self.menuVisible = False
+                self.caseChoisie = None
+
 
         # Si le clic est sur la grille
         if 0 <= i < NB_CASES and 0 <= j < NB_CASES:
@@ -343,8 +384,9 @@ class MapMaker:
                 self.afficheTuilesPossibles(i, j, bouton)
             elif bouton == 3:  # Clic droit
                 self.retirer(i, j)
-                self.menu_visible = False
+                self.menuVisible = False
                 self.caseChoisie = None
+
     def boucle_principale(self):
         # tourne tant que la fenêtre est ouverte
         while True:
