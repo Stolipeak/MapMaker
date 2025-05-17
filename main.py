@@ -42,7 +42,6 @@ class MapMaker:
         # Attributs pour la navigation
         self.indice = 0
         self.nbPages = 0
-        self.tuiles_par_page = 5  # Changement de 6 à 5 tuiles par page
 
     def setMenu(self):
         if self.menu == "acc":
@@ -240,45 +239,39 @@ class MapMaker:
               couleur='black', taille=16, ancrage='center')
 
         # Grand rectangle principal
-        rectangle(650, 360, 830, 630, couleur="black", remplissage='white', epaisseur=2)
+        rectangle(650, 360, 830, 585, couleur="black", remplissage='white', epaisseur=2)
         # Lignes horizontales pour diviser en 6 rangées
         ligne(650, 405, 830, 405, couleur="black", epaisseur=1)  # 1ère ligne horizontale
         ligne(650, 450, 830, 450, couleur="black", epaisseur=1)  # 2ème ligne horizontale
         ligne(650, 495, 830, 495, couleur="black", epaisseur=1)  # 3ème ligne horizontale
         ligne(650, 540, 830, 540, couleur="black", epaisseur=1)  # 4ème ligne horizontale
-        ligne(650, 585, 830, 585, couleur="black", epaisseur=1)  # 5ème ligne horizontale
 
     def dessiner_menu(self):
-        # montre les choix de tuiles si besoin
         if not self.menuVisible or not self.choixPossibles:
             return
 
         # Calculer la page actuelle et les indices
-        page_actuelle = self.indice // 6
-        debut = page_actuelle * 6
-        fin = min(debut + 6, len(self.choixPossibles))
+        page_actuelle = self.indice // 5  # Changé de 6 à 5
+        debut = page_actuelle * 5  # Changé de 6 à 5
+        fin = min(debut + 5, len(self.choixPossibles))  # Changé de 6 à 5
 
         # Afficher le numéro de page en haut du rectangle
         if self.nbPages > 1:
-            texte(740, 350, f"Page {page_actuelle + 1}/{self.nbPages}",
+            texte(740, 352, f"Page {page_actuelle + 1}/{self.nbPages}",
                   couleur='black', taille=10, ancrage='center')
 
         # Calculer la hauteur de chaque section
-        hauteur_section = (630 - 360) / 6  # 45 pixels
+        hauteur_section = (585 - 360) / 5  # Changé pour 5 sections
 
-        # Afficher jusqu'à 6 tuiles, une par section
+        # Afficher les tuiles
         for idx, position in enumerate(range(debut, fin)):
             if position < len(self.choixPossibles):
                 code_tuile = self.choixPossibles[position]
-
-                # Calculer la position Y du centre de la section
                 y_base = 360 + (idx * hauteur_section)
                 y_centre = y_base + (hauteur_section / 2)
 
-                # Afficher le code de la tuile
                 texte(665, y_centre, code_tuile, couleur='black', taille=10, ancrage='w')
 
-                # Afficher la miniature de la tuile
                 if code_tuile in self.tuiles:
                     try:
                         image(795, y_centre, self.tuiles[code_tuile],
@@ -301,12 +294,13 @@ class MapMaker:
                 rectangle(770, 605, 820, 625, couleur="black", remplissage="lightgray")
                 # Triangle pour la flèche
                 polygone([(810, 615), (800, 605), (800, 625)], couleur="black", remplissage="black")
+
     def afficheTuilesPossibles(self, i, j, bouton):
         """Prépare l'affichage des tuiles possibles pour une case donnée."""
         self.choixPossibles = self.tuilesPossibles(i, j)
         self.caseChoisie = (i, j)
         self.indice = 0  # Commence à la première page
-        self.nbPages = (len(self.choixPossibles) + 5) // 6  # Nombre de pages nécessaires
+        self.nbPages = (len(self.choixPossibles) + 4) // 5  # Changé de 6 à 5
         self.menuVisible = True
 
         if len(self.choixPossibles) > 0:
@@ -336,13 +330,13 @@ class MapMaker:
                     self.indice = min(self.indice + 6, len(self.choixPossibles) - 1)
                     return
 
-            # Clic sur une tuile dans une section
-            if 650 <= x <= 830 and 360 <= y <= 600:  # Limité pour éviter de cliquer sur les flèches
-                hauteur_section = (630 - 360) / 6
+            # Dans la méthode gerer_clic()
+            if 650 <= x <= 830 and 360 <= y <= 585:
+                hauteur_section = (585 - 360) / 5  # Changé pour 5 sections
                 section = int((y - 360) // hauteur_section)
 
-                if 0 <= section < 6:
-                    index_tuile = page_actuelle * 6 + section
+                if 0 <= section < 5:  # Changé de 6 à 5
+                    index_tuile = page_actuelle * 5 + section  # Changé de 6 à 5
 
                     if index_tuile < len(self.choixPossibles) and self.caseChoisie:
                         ci, cj = self.caseChoisie
