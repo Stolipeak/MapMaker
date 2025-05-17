@@ -263,6 +263,7 @@ class MapMaker:
         # Calculer la hauteur de chaque section
         hauteur_section = (585 - 360) / 5  # Changé pour 5 sections
 
+
         # Afficher les tuiles
         for idx, position in enumerate(range(debut, fin)):
             if position < len(self.choixPossibles):
