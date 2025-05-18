@@ -230,7 +230,8 @@ class MapMaker:
         for decor in self.decors:
             i, j, relx, rely, type_decor = decor
             nom_tuile = self.grille[i][j]
-            if nom_tuile and "S" in nom_tuile:
+            # Determine the correct decor directory based on biome
+            if type_decor in DECORS_PAR_BIOME.get('S', []):
                 chemin = f"decors/mer/{type_decor}.png"
             else:
                 chemin = f"decors/terre/{type_decor}.png"
