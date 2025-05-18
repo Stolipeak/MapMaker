@@ -2,6 +2,9 @@ from fltk import *
 import os
 import random
 import winsound
+from tkinter import Tk
+from tkinter import filedialog
+from PIL import Image
 
 # paramètres de base
 TAILLE_CASE = 64
@@ -24,11 +27,15 @@ COTES = {
 }
 
 DECORS_PAR_BIOME = {
-    'S': ["serpent", "ship", "siren", "wave","wave2"],
-    'P': ["black_city", "city", "field", "grass","grass2", "sheep", "village"]
+    'S': ["serpent", "ship", "siren", "wave", "wave2"],
+    'P': ["black_city", "city", "field", "grass", "grass2", "sheep", "village"]
 }
 
+
 class MapMaker:
+    """
+    Classe principale pour le MapMaker.
+    """
     def __init__(self):
         self.grille = [[None for _ in range(NB_CASES)] for _ in range(NB_CASES)]
         self.tuiles = self.charger_tuiles("tuiles")
@@ -49,11 +56,11 @@ class MapMaker:
         self.nbPages = 0
         self.deco_indice = 0
         self.deco_nbPages = 0
-        self.origin_x = 0  # Décalage horizontal (case en haut à gauche affichée)
-        self.origin_y = 0  # Décalage vertical
-        self.memo_grille = {}   # Dictionnaire {(i, j): code_tuile} pour stocker les cases générées
-        self.memo_decors = {}   # Dictionnaire {(i, j): [tuple decors]} pour stocker les décors générés
-
+        self.origin_x = 0
+        self.origin_y = 0
+        self.memo_grille = {}
+        self.memo_decors = {}
+        self.menu_sauvegarde = False
 
     def setMenu(self):
         if self.menu == "acc":
@@ -75,9 +82,12 @@ class MapMaker:
             ]
             for x, y in cloud_positions:
                 image(x, y, "media/cloud.png", largeur=80, hauteur=80, ancrage='nw')
+
             image(300, 100, "media/logoMM.png", largeur=300, hauteur=300, ancrage='center')
-            rectangle(200, 290, 400, 340, couleur='black', remplissage='white', epaisseur=2)
-            texte(300, 315, "MapMaker", couleur='black', taille=16, ancrage='center')
+            rectangle(200, 250, 400, 300, couleur='black', remplissage='white', epaisseur=2)
+            texte(300, 275, "MapMaker", couleur='black', taille=16, ancrage='center')
+            rectangle(200, 330, 400, 380, couleur='black', remplissage='white', epaisseur=2)
+            texte(300, 355, "Charger", couleur='black', taille=16, ancrage='center')
             rectangle(550, 2, 600, 52, couleur='black', remplissage='white', epaisseur=2)
             image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
             isSound = True
@@ -89,8 +99,15 @@ class MapMaker:
                     break
                 elif tev == 'ClicGauche':
                     x, y = abscisse(ev), ordonnee(ev)
-                    if 200 <= x <= 400 and 340 >= y >= 290:
+                    if 200 <= x <= 400 and 300 >= y >= 250:
                         self.menu = "MapMaker"
+                        ferme_fenetre()
+                        cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)
+                        self.boucle_principale()
+                        return
+                    elif 200 <= x <= 400 and 380 >= y >= 330:
+                        self.menu = "MapMaker"
+                        self.charger()
                         ferme_fenetre()
                         cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)
                         self.boucle_principale()
@@ -100,10 +117,12 @@ class MapMaker:
                             isSound = False
                             winsound.PlaySound(None, winsound.SND_ASYNC)
                             efface("isSound")
-                            image(575, 27, "media/stopSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
+                            image(575, 27, "media/stopSound.png", largeur=20, hauteur=20, ancrage='center',
+                                  tag="isSound")
                         else:
                             isSound = True
-                            winsound.PlaySound("media/nouveauTheme.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+                            winsound.PlaySound("media/nouveauTheme.wav",
+                                               winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
                             efface("isSound")
                             image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
                 mise_a_jour()
@@ -156,7 +175,8 @@ class MapMaker:
         self.decors = [d for d in self.decors if not (d[0] == i and d[1] == j)]
 
     def generer_carte_aleatoire(self):
-        cases_vides = [(ligne, col) for ligne in range(NB_CASES) for col in range(NB_CASES) if self.grille[ligne][col] is None]
+        cases_vides = [(ligne, col) for ligne in range(NB_CASES) for col in range(NB_CASES) if
+                       self.grille[ligne][col] is None]
         if not cases_vides:
             return True
         ligne, col = cases_vides[0]
@@ -167,8 +187,8 @@ class MapMaker:
         random.shuffle(tuiles_valides)
         # Tri pour éviter les tuiles identiques côte à côte (plus esthétique)
         voisins = []
-        if ligne > 0 and self.grille[ligne-1][col]: voisins.append(self.grille[ligne-1][col])
-        if col > 0 and self.grille[ligne][col-1]: voisins.append(self.grille[ligne][col-1])
+        if ligne > 0 and self.grille[ligne - 1][col]: voisins.append(self.grille[ligne - 1][col])
+        if col > 0 and self.grille[ligne][col - 1]: voisins.append(self.grille[ligne][col - 1])
         tuiles_ordonnee = sorted(tuiles_valides, key=lambda tuile: sum(1 for v in voisins if v == tuile))
 
         for tuile in tuiles_ordonnee:
@@ -203,8 +223,9 @@ class MapMaker:
                     chemin = self.tuiles[self.grille[i][j]]
                     image(x, y, chemin, largeur=TAILLE_CASE, hauteur=TAILLE_CASE, ancrage='nw')
                 else:
-                    rectangle(x, y, x + TAILLE_CASE, y + TAILLE_CASE, couleur='black', remplissage='light gray', epaisseur=1)
-        
+                    rectangle(x, y, x + TAILLE_CASE, y + TAILLE_CASE, couleur='black', remplissage='light gray',
+                              epaisseur=1)
+
         # Décors posés
         for decor in self.decors:
             i, j, relx, rely, type_decor = decor
@@ -216,66 +237,26 @@ class MapMaker:
             x = j * TAILLE_CASE + relx
             y = i * TAILLE_CASE + rely
             image(x, y, chemin, largeur=32, hauteur=32, ancrage='center')
-            
+
         # Barre latérale
         rectangle(LARGEUR_FENETRE, 0, LARGEUR_TOTALE, HAUTEUR_FENETRE, couleur='black', remplissage='white')
-        image((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, 50, "media/logoMM.png", largeur=120, hauteur=120, ancrage='center')
-        
+        image((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, 50, "media/logoMM.png", largeur=120, hauteur=120,
+              ancrage='center')
+
         # Bouton Ajout Décors
         rectangle(LARGEUR_FENETRE + 10, HAUTEUR_FENETRE // 2 - 25, LARGEUR_TOTALE - 10, HAUTEUR_FENETRE // 2 + 25,
-                couleur='black', remplissage='light blue' if self.mode_ajout_decor else 'white', epaisseur=2)
+                  couleur='black', remplissage='light blue' if self.mode_ajout_decor else 'white', epaisseur=2)
         texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, HAUTEUR_FENETRE // 2, "Ajout Décors",
-            couleur='black', taille=16, ancrage='center')
-            
-        # Menu décor si visible
-        if self.decos_menu_visible and self.decos_menu_info:
-            self.dessiner_menu_decor()
+              couleur='black', taille=16, ancrage='center')
 
-    def dessiner_menu_decor(self):
-        i, j, biome, relx, rely = self.decos_menu_info
-        decors = DECORS_PAR_BIOME[biome]
-        n_par_page = 5
-        nbPages = (len(decors) + n_par_page - 1) // n_par_page
-        page_actuelle = self.deco_indice // n_par_page
-        debut = page_actuelle * n_par_page
-        fin = min(debut + n_par_page, len(decors))
-        
-        x0, y0 = LARGEUR_FENETRE + 20, 250
-        rect_w, rect_h = 180, 45 * n_par_page + 60
+        # Bouton de sauvegarde
+        rectangle(LARGEUR_FENETRE + 10, HAUTEUR_FENETRE // 2 - 100, LARGEUR_TOTALE - 10, HAUTEUR_FENETRE // 2 - 50,
+                  couleur='black', remplissage='white', epaisseur=2)
+        texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, HAUTEUR_FENETRE // 2 - 75, "Sauvegarder",
+              couleur='black', taille=16, ancrage='center')
 
-        # Rectangle principal
-        rectangle(x0, y0, x0 + rect_w, y0 + rect_h, couleur="black", remplissage="white")
-        texte(x0 + rect_w // 2, y0 + 20, "Choisir un décor", taille=13, couleur="black", ancrage="center")
 
-        # Affichage pagination
-        if nbPages > 1:
-            texte(x0 + rect_w // 2, y0 + 40, f"Page {page_actuelle + 1}/{nbPages}", couleur="black", taille=10, ancrage="center")
-        
-        # Affichage des décors
-        for idx, position in enumerate(range(debut, fin)):
-            decor = decors[position]
-            yb = y0 + 60 + idx * 45
-            rectangle(x0 + 10, yb, x0 + rect_w - 10, yb + 40, couleur='black', remplissage='light gray', epaisseur=1)
-            texte(x0 + 80, yb + 20, decor.capitalize(), couleur='black', taille=12, ancrage='center')
-            if biome == "S":
-                chemin = f"decors/mer/{decor}.png"
-            else:
-                chemin = f"decors/terre/{decor}.png"
-            image(x0 + 28, yb + 20, chemin, largeur=32, hauteur=32, ancrage='center')
 
-        # Flèches pagination
-        if nbPages > 1:
-            # Flèche gauche (page précédente)
-            if page_actuelle > 0:
-                rectangle(x0 + 10, y0 + rect_h - 35, x0 + 50, y0 + rect_h - 10, couleur="black", remplissage="lightgray")
-                polygone([(x0 + 20, y0 + rect_h - 22), (x0 + 40, y0 + rect_h - 32), (x0 + 40, y0 + rect_h - 12)], couleur="black", remplissage="black")
-            # Flèche droite (page suivante)
-            if page_actuelle < nbPages - 1:
-                rectangle(x0 + rect_w - 50, y0 + rect_h - 35, x0 + rect_w - 10, y0 + rect_h - 10, couleur="black", remplissage="lightgray")
-                polygone([(x0 + rect_w - 20, y0 + rect_h - 22), (x0 + rect_w - 40, y0 + rect_h - 32), (x0 + rect_w - 40, y0 + rect_h - 12)], couleur="black", remplissage="black")
-        
-        # Stocke nbPages pour la gestion des clics
-        self.deco_nbPages = nbPages
 
     def afficheTuilesPossibles(self, x, y, bouton):
         self.choixPossibles = self.tuilesPossibles(x, y)
@@ -284,157 +265,289 @@ class MapMaker:
         self.nbPages = (len(self.choixPossibles) + 4) // 5  # 5 tuiles par page
         self.menu_visible = True
         if len(self.choixPossibles) > 0:
-            self.afficher_message_status(f"Tuiles possibles : {len(self.choixPossibles)}", duree=200, couleur="green")
+            self.afficher_message_status(f"Tuiles possibles : \n {len(self.choixPossibles)}", duree=200, couleur="green")
         else:
-            self.afficher_message_status("Aucune tuile possible", duree=200, couleur="red")
+            self.afficher_message_status("Aucune tuile \n possible", duree=200, couleur="red")
 
     def gerer_clic(self, x, y, bouton):
-        if self.decos_menu_visible and self.decos_menu_info:
-            i, j, biome, relx, rely = self.decos_menu_info
-            decors = DECORS_PAR_BIOME[biome]
-            n_par_page = 5
-            nbPages = (len(decors) + n_par_page - 1) // n_par_page
-            page_actuelle = self.deco_indice // n_par_page
-            debut = page_actuelle * n_par_page
-            fin = min(debut + n_par_page, len(decors))
-            x0, y0 = LARGEUR_FENETRE + 20, 250
-            rect_w, rect_h = 180, 45 * n_par_page + 60
-
-            # Sélection d'un décor
-            for idx, position in enumerate(range(debut, fin)):
-                yb = y0 + 60 + idx * 45
-                if x0 + 10 <= x <= x0 + rect_w - 10 and yb <= y <= yb + 40:
-                    self.decors.append((i, j, relx, rely, decors[position]))
-                    self.afficher_message_status(f"Décor '{decors[position]}' ajouté", couleur="green")
-                    self.decos_menu_visible = False
-                    self.mode_ajout_decor = False
-                    self.deco_indice = 0
-                    return
-
-            # Gestion pagination
-            # Flèche gauche (page précédente)
-            if nbPages > 1 and x0 + 10 <= x <= x0 + 50 and y0 + rect_h - 35 <= y <= y0 + rect_h - 10 and page_actuelle > 0:
-                self.deco_indice = max(0, self.deco_indice - n_par_page)
-                return
-            # Flèche droite (page suivante)
-            if nbPages > 1 and x0 + rect_w - 50 <= x <= x0 + rect_w - 10 and y0 + rect_h - 35 <= y <= y0 + rect_h - 10 and page_actuelle < nbPages - 1:
-                self.deco_indice = min(len(decors) - 1, self.deco_indice + n_par_page)
-                return
-
-            # Clique ailleurs = fermeture
-            self.decos_menu_visible = False
-            self.deco_indice = 0
-            return
-
-        # Gestion du bouton Ajout Décors
         if x >= LARGEUR_FENETRE:
-            if (LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10) and (HAUTEUR_FENETRE // 2 - 25 <= y <= HAUTEUR_FENETRE // 2 + 25):
+            # Gestion du bouton de sauvegarde
+            if (LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10) and (
+                    HAUTEUR_FENETRE // 2 - 100 <= y <= HAUTEUR_FENETRE // 2 - 50):
+                self.menu_visible = True
+                self.menu_sauvegarde = True
+                return
+
+
+            # Gestion des boutons du menu de sauvegarde
+            if self.menu_visible and self.menu_sauvegarde:
+                if 670 <= x <= 810:
+                    if 420 <= y <= 460:  # Bouton Sauvegarder
+                        self.sauvegarde()
+                        return
+                    elif 480 <= y <= 520:  # Bouton Annuler
+                        self.exportPNG()
+                    elif 540 <= y <= 580:
+                        self.menu_visible = False
+                        self.menu_sauvegarde = False
+                        return
+        if x >= LARGEUR_FENETRE:
+            # Gestion du bouton Ajout Décors
+            if (LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10) and (
+                    HAUTEUR_FENETRE // 2 - 25 <= y <= HAUTEUR_FENETRE // 2 + 25):
                 self.mode_ajout_decor = not self.mode_ajout_decor
-                self.decos_menu_visible = False
+                # On ne ferme plus automatiquement le menu
                 if self.mode_ajout_decor:
-                    self.afficher_message_status("Mode Ajout Décor : Cliquez sur une tuile", couleur="blue")
+                    self.afficher_message_status("Mode Ajout Décor", couleur="blue")
                 else:
                     self.afficher_message_status("Mode normal", couleur="green")
+                    self.menu_visible = False
+                    self.decos_menu_info = None
                 return
-            # Gestion du menu des tuiles
-            if self.menu_visible and self.caseChoisie:
+
+            # Gestion du menu (commun pour tuiles et décors)
+            if self.menu_visible:
                 page_actuelle = self.indice // 5
-                debut = page_actuelle * 5
-                fin = min(debut + 5, len(self.choixPossibles))
-                for idx in range(debut, fin):
-                    y_pos = 360 + ((idx - debut) * 45)
-                    if 650 <= x <= 830 and y_pos <= y <= y_pos + 45:
-                        ci, cj = self.caseChoisie
-                        self.poser(ci, cj, self.choixPossibles[idx])
-                        self.menu_visible = False
-                        self.caseChoisie = None
-                        return
-                # Gestion pagination
                 if self.nbPages > 1 and 605 <= y <= 625:
                     if 660 <= x <= 710 and page_actuelle > 0:
                         self.indice = max(0, self.indice - 5)
                         return
                     elif 770 <= x <= 820 and page_actuelle < self.nbPages - 1:
-                        self.indice = min(len(self.choixPossibles) - 1, self.indice + 5)
+                        self.indice = min(self.indice + 5,
+                                          len(self.choixPossibles if not self.mode_ajout_decor else DECORS_PAR_BIOME[
+                                              self.decos_menu_info[2]]) - 1)
                         return
-            return
 
-        # Gestion de l'ajout de décor
-        if self.mode_ajout_decor:
-            i, j = y // TAILLE_CASE, x // TAILLE_CASE
-            if 0 <= i < NB_CASES and 0 <= j < NB_CASES and self.grille[i][j]:
+                debut = page_actuelle * 5
+                for idx in range(5):
+                    y_pos = 360 + (idx * 45)
+                    if 650 <= x <= 830 and y_pos <= y <= y_pos + 45:
+                        position = debut + idx
+                        if self.mode_ajout_decor and self.decos_menu_info:
+                            i, j, biome, relx, rely = self.decos_menu_info
+                            decors = DECORS_PAR_BIOME[biome]
+                            if position < len(decors):
+                                self.decors.append((i, j, relx, rely, decors[position]))
+                                self.afficher_message_status(f"Décor '{decors[position]}' ajouté", couleur="green")
+                                self.menu_visible = False
+                                self.decos_menu_info = None
+                        elif not self.mode_ajout_decor and position < len(self.choixPossibles):
+                            ci, cj = self.caseChoisie
+                            self.poser(ci, cj, self.choixPossibles[position])
+                            self.menu_visible = False
+                        return
+                return
+
+        # Gestion des clics sur la grille
+        i, j = y // TAILLE_CASE, x // TAILLE_CASE
+        if 0 <= i < NB_CASES and 0 <= j < NB_CASES:
+            if self.mode_ajout_decor and self.grille[i][j]:
                 nom_tuile = self.grille[i][j]
                 biomes = set(nom_tuile)
                 biomes_dispo = [b for b in biomes if b in DECORS_PAR_BIOME]
-                if not biomes_dispo:
+                if biomes_dispo:
+                    biome = biomes_dispo[0]
+                    relx = random.randint(16, TAILLE_CASE - 16)
+                    rely = random.randint(16, TAILLE_CASE - 16)
+                    self.decos_menu_info = (i, j, biome, relx, rely)
+                    self.indice = 0
+                    self.menu_visible = True  # Active le menu
+                else:
                     self.afficher_message_status("Aucun décor pour ce biome", couleur="red")
-                    return
-                biome = biomes_dispo[0]
-                relx = random.randint(16, TAILLE_CASE - 16)
-                rely = random.randint(16, TAILLE_CASE - 16)
-                self.decos_menu_visible = True
-                self.decos_menu_info = (i, j, biome, relx, rely)
-            return
-
-        # Gestion normale: pose ou suppression de tuile
-        i, j = y // TAILLE_CASE, x // TAILLE_CASE
-        if 0 <= i < NB_CASES and 0 <= j < NB_CASES:
-            if bouton == 1:
-                self.afficheTuilesPossibles(i, j, bouton)
+            elif bouton == 1 and not self.mode_ajout_decor:
+                self.menu_visible = True
+                self.choixPossibles = self.tuilesPossibles(i, j)
+                self.caseChoisie = (i, j)
+                self.indice = 0
+                if len(self.choixPossibles) > 0:
+                    self.afficher_message_status(f"Tuiles possibles : {len(self.choixPossibles)}", couleur="green")
+                else:
+                    self.afficher_message_status("Aucune tuile possible", couleur="red")
             elif bouton == 3:
                 self.retirer(i, j)
                 self.menu_visible = False
-                self.caseChoisie = None
+                self.decos_menu_info = None
 
     def dessiner_menu(self):
-        if not self.menu_visible or not self.choixPossibles:
+        if not self.menu_visible:
             return
 
-        # Grand rectangle principal (650,360 à 830,585)
+        # Grand rectangle principal
         rectangle(650, 360, 830, 585, couleur="black", remplissage='white', epaisseur=2)
-        
-        # Lignes horizontales pour diviser en 5 rangées
-        for i in range(1, 5):
-            ligne(650, 360 + i * 45, 830, 360 + i * 45, couleur="black", epaisseur=1)
 
-        page_actuelle = self.indice // 5
-        debut = page_actuelle * 5
-        fin = min(debut + 5, len(self.choixPossibles))
+        # Menu de sauvegarde
+        if self.menu_sauvegarde:
+            texte(740, 380, "Confirmer la sauvegarde ?", couleur='black', taille=12, ancrage='center')
+            rectangle(670, 420, 810, 460, couleur="black", remplissage='lightgreen', epaisseur=2)
+            texte(740, 440, "Sauvegarder .sav", couleur='black', taille=12, ancrage='center')
+            rectangle(670, 480, 810, 520, couleur="black", remplissage='lightblue', epaisseur=2)
+            texte(740, 500, "Sauvegarder .png", couleur='black', taille=12, ancrage='center')
+            rectangle(670, 540, 810, 580, couleur="black", remplissage='lightgray', epaisseur=2)
+            texte(740, 560, "Annuler", couleur='black', taille=12, ancrage='center')
 
-        # Afficher le numéro de page en haut du rectangle
-        if self.nbPages > 1:
-            texte(740, 352, f"Page {page_actuelle + 1}/{self.nbPages}",
-                  couleur='black', taille=10, ancrage='center')
+            return
 
-        # Afficher les tuiles
-        for idx, position in enumerate(range(debut, fin)):
-            if position < len(self.choixPossibles):
-                code_tuile = self.choixPossibles[position]
-                y_base = 360 + (idx * 45)
-                y_centre = y_base + 22.5
+        # En mode ajout décor, on affiche le menu des décors
+        if self.mode_ajout_decor and self.decos_menu_info:
+            i, j, biome, relx, rely = self.decos_menu_info
+            decors = DECORS_PAR_BIOME[biome]
+            page_actuelle = self.indice // 5
+            debut = page_actuelle * 5
+            fin = min(debut + 5, len(decors))
+            self.nbPages = (len(decors) + 4) // 5
 
-                texte(665, y_centre, code_tuile, couleur='black', taille=10, ancrage='w')
+            if self.nbPages > 1:
+                texte(740, 352, f"Page {page_actuelle + 1}/{self.nbPages}",
+                      couleur='black', taille=10, ancrage='center')
 
-                if code_tuile in self.tuiles:
-                    try:
+            for idx, position in enumerate(range(debut, fin)):
+                if position < len(decors):
+                    decor = decors[position]
+                    y_base = 360 + (idx * 45)
+                    y_centre = y_base + 22.5
+                    rectangle(650, y_base, 830, y_base + 45, couleur="black", epaisseur=1)
+                    texte(665, y_centre, decor.capitalize(), couleur='black', taille=10, ancrage='w')
+                    if biome == "S":
+                        chemin = f"decors/mer/{decor}.png"
+                    else:
+                        chemin = f"decors/terre/{decor}.png"
+                    image(795, y_centre, chemin, largeur=32, hauteur=32, ancrage='center')
+
+        # Sinon on affiche le menu des tuiles
+        elif self.choixPossibles:
+            page_actuelle = self.indice // 5
+            debut = page_actuelle * 5
+            fin = min(debut + 5, len(self.choixPossibles))
+            self.nbPages = (len(self.choixPossibles) + 4) // 5
+
+            if self.nbPages > 1:
+                texte(740, 352, f"Page {page_actuelle + 1}/{self.nbPages}",
+                      couleur='black', taille=10, ancrage='center')
+
+            for idx, position in enumerate(range(debut, fin)):
+                if position < len(self.choixPossibles):
+                    code_tuile = self.choixPossibles[position]
+                    y_base = 360 + (idx * 45)
+                    y_centre = y_base + 22.5
+                    rectangle(650, y_base, 830, y_base + 45, couleur="black", epaisseur=1)
+                    texte(665, y_centre, code_tuile, couleur='black', taille=10, ancrage='w')
+                    if code_tuile in self.tuiles:
                         image(795, y_centre, self.tuiles[code_tuile],
                               largeur=35, hauteur=35, ancrage='center')
-                    except:
-                        texte(795, y_centre, "?", couleur='red', taille=16, ancrage='center')
 
-        # Flèches de navigation en bas du rectangle
+        # Flèches de navigation
         if self.nbPages > 1:
-            # Flèche gauche (page précédente)
             if page_actuelle > 0:
                 rectangle(660, 605, 710, 625, couleur="black", remplissage="lightgray")
                 polygone([(670, 615), (680, 605), (680, 625)], couleur="black", remplissage="black")
-
-            # Flèche droite (page suivante)
             if page_actuelle < self.nbPages - 1:
                 rectangle(770, 605, 820, 625, couleur="black", remplissage="lightgray")
                 polygone([(810, 615), (800, 605), (800, 625)], couleur="black", remplissage="black")
-    
-    
+
+    def sauvegarde(self):
+        # Créer le dossier saves s'il n'existe pas
+        if not os.path.exists("saves"):
+            os.makedirs("saves")
+
+        # Trouver le prochain numéro de sauvegarde disponible
+        num = 1
+        while os.path.exists(f"saves/carte_{num}.sav"):
+            num += 1
+
+        fichier = f"saves/carte_{num}.sav"
+
+        with open(fichier, 'w') as f:
+            # Sauvegarde des tuiles
+            for i in range(NB_CASES):
+                for j in range(NB_CASES):
+                    if self.grille[i][j] is not None:
+                        f.write(f"TUILE;{i};{j};{self.grille[i][j]}\n")
+
+            # Sauvegarde des décors
+            for decor in self.decors:
+                i, j, relx, rely, type_decor = decor
+                f.write(f"DECOR;{i};{j};{relx};{rely};{type_decor}\n")
+
+        self.afficher_message_status(f"Carte sauvegardée : \n {fichier}", couleur="green")
+        self.menu_visible = False
+        self.menu_sauvegarde = False
+
+    def charger(self):
+        if not os.path.exists("saves"):
+            os.makedirs("saves")
+
+        root = Tk()
+        root.withdraw() #Cache la fenetre root
+
+        fichier = filedialog.askopenfilename(
+            initialdir="saves",
+            title="Sélectionner une map à charger",
+            filetypes=(("Fichiers de sauvegarde", "*.sav"), ("Tous les fichiers", "*.*"))
+        )
+
+
+
+        with open(fichier, 'r') as f:
+            lignes = f.readlines()
+            for ligne in lignes:
+                elements = ligne.strip().split(';')
+                if elements[0] == "TUILE":
+                    i, j, tuile = int(elements[1]), int(elements[2]), elements[3]
+                    self.grille[i][j] = tuile
+                elif elements[0] == "DECOR":
+                    i, j, relx, rely, type_decor = int(elements[1]), int(elements[2]), int(elements[3]), int(
+                        elements[4]), elements[5]
+                    self.decors.append((i, j, relx, rely, type_decor))
+
+
+    def exportPNG(self):
+        tailleTotale = NB_CASES * TAILLE_CASE
+        carteImg = Image.new("RGBA", (tailleTotale, tailleTotale), (200, 200, 200, 255))
+
+        # Dessiner les tuiles
+        for i in range(NB_CASES):
+            for j in range(NB_CASES):
+                if self.grille[i][j] is not None:
+                    cheminTuile = self.tuiles[self.grille[i][j]]
+                    tuileImg = Image.open(cheminTuile).convert("RGBA")
+                    tuileImg = tuileImg.resize((TAILLE_CASE, TAILLE_CASE))
+                    carteImg.paste(tuileImg, (j * TAILLE_CASE, i * TAILLE_CASE))
+
+        # Dessiner les décors
+        for decor in self.decors:
+            i, j, relx, rely, typeDecor = decor
+            if "S" in self.grille[i][j]:
+                cheminDecor = f"decors/mer/{typeDecor}.png"
+            else:
+                cheminDecor = f"decors/terre/{typeDecor}.png"
+
+            if os.path.exists(cheminDecor):
+                decorImg = Image.open(cheminDecor).convert("RGBA")
+                decorImg = decorImg.resize((32, 32))
+                x = j * TAILLE_CASE + relx - 16
+                y = i * TAILLE_CASE + rely - 16
+                # Créer un masque de transparence
+                r, g, b, a = decorImg.split()
+                carteImg.paste(decorImg, (x, y), mask=a)
+
+        # Créer le dossier export si nécessaire
+        if not os.path.exists("export"):
+            os.makedirs("export")
+
+        # Trouver le prochain numéro disponible
+        num = 1
+        while os.path.exists(f"export/carte_{num}.png"):
+            num += 1
+
+        cheminExport = f"export/carte_{num}.png"
+        carteImg.save(cheminExport)
+        self.afficher_message_status(f"Carte exportée : \n {cheminExport}", couleur="green")
+        self.menu_visible = False
+        self.menu_sauvegarde = False
+        return True
+
+
+
 
     def boucle_principale(self):
         while True:
@@ -442,7 +555,7 @@ class MapMaker:
             self.dessiner()
             self.dessiner_menu()
             self.dessiner_message_status()
-            
+
             ev = donne_ev()
             if type_ev(ev) == 'Quitte':
                 break
@@ -465,6 +578,7 @@ class MapMaker:
                     self.timer_status = 0
             mise_a_jour()
         ferme_fenetre()
+
 
 if __name__ == "__main__":
     app = MapMaker()
