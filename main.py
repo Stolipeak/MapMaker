@@ -38,7 +38,7 @@ class MapMaker:
     """
     def __init__(self):
         self.grille = [[None for _ in range(NB_CASES)] for _ in range(NB_CASES)]
-        self.tuiles = self.charger_tuiles("tuiles")
+        self.tuiles = self.chargerTuiles("tuiles")
         self.selection = None
         self.menu_visible = False
         self.position_menu = (0, 0)
@@ -63,12 +63,17 @@ class MapMaker:
         self.menu_sauvegarde = False
 
     def setMenu(self):
+        """
+        Fonction pour afficher le menu d'accueil ou le menu de MapMaker
+
+        :return:
+        """
         if self.menu == "acc":
             cree_fenetre(600, 600)
             efface_tout()
             winsound.PlaySound("media/nouveauTheme.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
             rectangle(0, 0, 600, 600, couleur='sky blue', remplissage='sky blue')
-            cloud_positions = [
+            cloud_positions = [ # Positions des nuages pour l'arrière-plan
                 (20, 20), (100, 50), (200, 100), (300, 150), (400, 200),
                 (500, 250), (50, 300), (150, 350), (250, 400), (350, 450),
                 (450, 500), (550, 50), (20, 550), (100, 500), (200, 450),
@@ -83,11 +88,15 @@ class MapMaker:
             for x, y in cloud_positions:
                 image(x, y, "media/cloud.png", largeur=80, hauteur=80, ancrage='nw')
 
+            # Logo MapMaker
             image(300, 100, "media/logoMM.png", largeur=300, hauteur=300, ancrage='center')
+            # Bouton MapMaker
             rectangle(200, 250, 400, 300, couleur='black', remplissage='white', epaisseur=2)
             texte(300, 275, "MapMaker", couleur='black', taille=16, ancrage='center')
+            # Bouton Charger
             rectangle(200, 330, 400, 380, couleur='black', remplissage='white', epaisseur=2)
             texte(300, 355, "Charger", couleur='black', taille=16, ancrage='center')
+            # Bouton pour activer/désactiver le son
             rectangle(550, 2, 600, 52, couleur='black', remplissage='white', epaisseur=2)
             image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
             isSound = True
@@ -127,11 +136,14 @@ class MapMaker:
                             image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
                 mise_a_jour()
             ferme_fenetre()
-        else:
-            cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)
-            self.boucle_principale()
 
-    def charger_tuiles(self, dossier):
+
+    def chargerTuiles(self, dossier):
+        """
+        Charge les tuiles à partir du dossier /tuiles
+        :param dossier: /tuiles
+        :return: dictionnaire des tuiles
+        """
         tuiles = {}
         if os.path.exists(dossier):
             for fichier in os.listdir(dossier):
@@ -141,9 +153,16 @@ class MapMaker:
                         tuiles[nom] = os.path.join(dossier, fichier)
         return tuiles
 
-    def case_ok(self, i, j, code):
+    def caseOk(self, i, j, code):
+        """
+        Vérifie si on peut poser la case à l'endroit (i,j)
+        :param i: l'abscisse de la case
+        :param j: l'ordonnée de la case
+        :param code: le nom de la tuile
+        :return: True or False si on peut poser la case ou pas
+        """
         haut, droite, bas, gauche = code
-        if i > 0 and self.grille[i - 1][j] is not None:
+        if i > 0 and self.grille[i - 1][j] is not None: 
             if self.grille[i - 1][j][2] != haut:
                 return False
         if j < NB_CASES - 1 and self.grille[i][j + 1] is not None:
@@ -158,23 +177,46 @@ class MapMaker:
         return True
 
     def tuilesPossibles(self, i, j):
+        """
+        Renvoie la liste des tuiles possibles à poser sur la case (i,j)
+        :param i: abscisse de la case
+        :param j: ordonnée de la case
+        :return: liste des tuiles possibles
+        """
         possibles = []
         for t in self.tuiles:
-            if self.case_ok(i, j, t):
+            if self.caseOk(i, j, t):
                 possibles.append(t)
         return possibles
 
     def poser(self, i, j, code):
-        if self.case_ok(i, j, code):
+        """
+        Pose la tuile code à la case (i,j) si c'est possible
+        :param i: abscisse de la case
+        :param j: ordonnée de la case
+        :param code: nom de la case
+        :return:
+        """
+        if self.caseOk(i, j, code):
             self.grille[i][j] = code
             return True
         return False
 
     def retirer(self, i, j):
+        """
+        Retire la tuile de la case (i,j)
+        :param i: abscisse de la case
+        :param j: ordonnée de la case
+        :return:
+        """
         self.grille[i][j] = None
         self.decors = [d for d in self.decors if not (d[0] == i and d[1] == j)]
 
-    def generer_carte_aleatoire(self):
+    def solveur(self):
+        """
+        Génère une carte aléatoire
+        :return: 
+        """
         cases_vides = [(ligne, col) for ligne in range(NB_CASES) for col in range(NB_CASES) if
                        self.grille[ligne][col] is None]
         if not cases_vides:
@@ -193,17 +235,28 @@ class MapMaker:
 
         for tuile in tuiles_ordonnee:
             self.grille[ligne][col] = tuile
-            if self.generer_carte_aleatoire():
+            if self.solveur():
                 return True
             self.grille[ligne][col] = None
         return False
 
     def afficher_message_status(self, message, duree=100, couleur="green"):
+        """
+        Affiche un message de statut dans la barre latérale
+        :param message: le message (str)
+        :param duree: la durée (int)
+        :param couleur: la couleur (en str)
+        :return: 
+        """
         self.message_status = message
         self.timer_status = duree
         self.couleur_status = couleur
 
     def dessiner_message_status(self):
+        """
+        Dessine le message de statut dans la barre latérale
+        :return: 
+        """
         texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, 110, "Message Système",
               couleur='black', taille=14, ancrage='center', police='bold')
         rectangle(LARGEUR_FENETRE + 10, 140, LARGEUR_TOTALE - 10, 210, couleur='black', remplissage='white',
@@ -214,6 +267,10 @@ class MapMaker:
             self.timer_status -= 1
 
     def dessiner(self):
+        """
+        Dessine la grille et les tuiles
+        :return: 
+        """
         # Grille + tuiles
         for i in range(NB_CASES):
             for j in range(NB_CASES):
@@ -230,7 +287,6 @@ class MapMaker:
         for decor in self.decors:
             i, j, relx, rely, type_decor = decor
             nom_tuile = self.grille[i][j]
-            # Determine the correct decor directory based on biome
             if type_decor in DECORS_PAR_BIOME.get('S', []):
                 chemin = f"decors/mer/{type_decor}.png"
             else:
@@ -260,10 +316,17 @@ class MapMaker:
 
 
     def afficheTuilesPossibles(self, x, y, bouton):
+        """
+        Affiche les tuiles possibles à poser sur la case (x,y)
+        :param x: 
+        :param y: 
+        :param bouton: 
+        :return: 
+        """
         self.choixPossibles = self.tuilesPossibles(x, y)
         self.caseChoisie = (x, y)
         self.indice = 0
-        self.nbPages = (len(self.choixPossibles) + 4) // 5  # 5 tuiles par page
+        self.nbPages = (len(self.choixPossibles) + 4) // 5  # +4 car on garantit un reste pour garantir une dernière page non remplie
         self.menu_visible = True
         if len(self.choixPossibles) > 0:
             self.afficher_message_status(f"Tuiles possibles : \n {len(self.choixPossibles)}", duree=200, couleur="green")
@@ -271,58 +334,106 @@ class MapMaker:
             self.afficher_message_status("Aucune tuile \n possible", duree=200, couleur="red")
 
     def gerer_clic(self, x, y, bouton):
-        if x >= LARGEUR_FENETRE:
-            # Gestion du bouton de sauvegarde
-            if (LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10) and (
-                    HAUTEUR_FENETRE // 2 - 100 <= y <= HAUTEUR_FENETRE // 2 - 50):
-                self.menu_visible = True
-                self.menu_sauvegarde = True
-                return
-
-
-            # Gestion des boutons du menu de sauvegarde
-            if self.menu_visible and self.menu_sauvegarde:
-                if 670 <= x <= 810:
-                    if 420 <= y <= 460:  # Bouton Sauvegarder
-                        self.sauvegarde()
-                        return
-                    elif 480 <= y <= 520:  # Bouton Annuler
-                        self.exportPNG()
-                    elif 540 <= y <= 580:
-                        self.menu_visible = False
-                        self.menu_sauvegarde = False
-                        return
-        if x >= LARGEUR_FENETRE:
-            # Gestion du bouton Ajout Décors
-            if (LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10) and (
-                    HAUTEUR_FENETRE // 2 - 25 <= y <= HAUTEUR_FENETRE // 2 + 25):
-                self.mode_ajout_decor = not self.mode_ajout_decor
-                # On ne ferme plus automatiquement le menu
-                if self.mode_ajout_decor:
-                    self.afficher_message_status("Mode Ajout Décor", couleur="blue")
-                else:
-                    self.afficher_message_status("Mode normal", couleur="green")
+        """
+        Gère les clics de la souris sur MapMaker
+        :param x: abscisse du clic
+        :param y: ordonnée du clic
+        :param bouton: touche du clavier
+        :return: 
+        """
+        # Zone de la grille
+        if x < LARGEUR_FENETRE:
+            i, j = y // TAILLE_CASE, x // TAILLE_CASE
+            if 0 <= i < NB_CASES and 0 <= j < NB_CASES:
+                if self.mode_ajout_decor and self.grille[i][j]:
+                    nom_tuile = self.grille[i][j]
+                    biomes = set(nom_tuile)
+                    biomes_dispo = [b for b in biomes if b in DECORS_PAR_BIOME]
+                    if biomes_dispo:
+                        biome = biomes_dispo[0]
+                        relx = random.randint(16, TAILLE_CASE - 16)
+                        rely = random.randint(16, TAILLE_CASE - 16)
+                        self.decos_menu_info = (i, j, biome, relx, rely)
+                        self.indice = 0
+                        self.menu_visible = True
+                    else:
+                        self.afficher_message_status("Aucun décor pour ce biome", couleur="red")
+                elif bouton == 1 and not self.mode_ajout_decor:
+                    self.menu_visible = True
+                    self.choixPossibles = self.tuilesPossibles(i, j)
+                    self.caseChoisie = (i, j)
+                    self.indice = 0
+                    if len(self.choixPossibles) > 0:
+                        self.afficher_message_status(f"Tuiles possibles : {len(self.choixPossibles)}", couleur="green")
+                    else:
+                        self.afficher_message_status("Aucune tuile possible", couleur="red")
+                elif bouton == 3:
+                    self.retirer(i, j)
                     self.menu_visible = False
                     self.decos_menu_info = None
+            return
+
+        # Zone du menu latéral
+        if LARGEUR_FENETRE <= x <= LARGEUR_TOTALE:
+            # Logo MapMaker (en haut)
+            logo_centre_x = (LARGEUR_FENETRE + LARGEUR_TOTALE) // 2
+            logo_centre_y = 50
+            if (logo_centre_x - 60 <= x <= logo_centre_x + 60) and (logo_centre_y - 60 <= y <= logo_centre_y + 60):
+                self.menu = "acc"
+                ferme_fenetre()
+                self.setMenu()
                 return
 
-            # Gestion du menu (commun pour tuiles et décors)
-            if self.menu_visible:
-                page_actuelle = self.indice // 5
-                if self.nbPages > 1 and 605 <= y <= 625:
-                    if 660 <= x <= 710 and page_actuelle > 0:
-                        self.indice = max(0, self.indice - 5)
-                        return
-                    elif 770 <= x <= 820 and page_actuelle < self.nbPages - 1:
-                        self.indice = min(self.indice + 5,
-                                          len(self.choixPossibles if not self.mode_ajout_decor else DECORS_PAR_BIOME[
-                                              self.decos_menu_info[2]]) - 1)
-                        return
+            # Zone des boutons
+            if LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10:
+                # Bouton sauvegarde
+                if HAUTEUR_FENETRE // 2 - 100 <= y <= HAUTEUR_FENETRE // 2 - 50:
+                    self.menu_visible = True
+                    self.menu_sauvegarde = True
+                    return
 
+                # Bouton ajout décors
+                if HAUTEUR_FENETRE // 2 - 25 <= y <= HAUTEUR_FENETRE // 2 + 25:
+                    self.mode_ajout_decor = not self.mode_ajout_decor
+                    if self.mode_ajout_decor:
+                        self.afficher_message_status("Mode Ajout Décor", couleur="blue")
+                    else:
+                        self.afficher_message_status("Mode normal", couleur="green")
+                        self.menu_visible = False
+                        self.decos_menu_info = None
+                    return
+
+            # Menu popup de sauvegarde
+            if self.menu_visible and self.menu_sauvegarde and 670 <= x <= 810:
+                if 420 <= y <= 460:
+                    self.sauvegarde()
+                    return
+                elif 480 <= y <= 520:
+                    self.exportPNG()
+                elif 540 <= y <= 580:
+                    self.menu_visible = False
+                    self.menu_sauvegarde = False
+                return
+
+            # Navigation dans le menu de sélection
+            if self.menu_visible and self.nbPages > 1 and 605 <= y <= 625:
+                page_actuelle = self.indice // 5
+                if 660 <= x <= 710 and page_actuelle > 0:
+                    self.indice = max(0, self.indice - 5)
+                    return
+                elif 770 <= x <= 820 and page_actuelle < self.nbPages - 1:
+                    max_index = len(self.choixPossibles if not self.mode_ajout_decor else DECORS_PAR_BIOME[
+                        self.decos_menu_info[2]]) - 1
+                    self.indice = min(self.indice + 5, max_index)
+                    return
+
+            # Sélection dans le menu
+            if self.menu_visible and 650 <= x <= 830:
+                page_actuelle = self.indice // 5
                 debut = page_actuelle * 5
                 for idx in range(5):
                     y_pos = 360 + (idx * 45)
-                    if 650 <= x <= 830 and y_pos <= y <= y_pos + 45:
+                    if y_pos <= y <= y_pos + 45:
                         position = debut + idx
                         if self.mode_ajout_decor and self.decos_menu_info:
                             i, j, biome, relx, rely = self.decos_menu_info
@@ -337,37 +448,6 @@ class MapMaker:
                             self.poser(ci, cj, self.choixPossibles[position])
                             self.menu_visible = False
                         return
-                return
-
-        # Gestion des clics sur la grille
-        i, j = y // TAILLE_CASE, x // TAILLE_CASE
-        if 0 <= i < NB_CASES and 0 <= j < NB_CASES:
-            if self.mode_ajout_decor and self.grille[i][j]:
-                nom_tuile = self.grille[i][j]
-                biomes = set(nom_tuile)
-                biomes_dispo = [b for b in biomes if b in DECORS_PAR_BIOME]
-                if biomes_dispo:
-                    biome = biomes_dispo[0]
-                    relx = random.randint(16, TAILLE_CASE - 16)
-                    rely = random.randint(16, TAILLE_CASE - 16)
-                    self.decos_menu_info = (i, j, biome, relx, rely)
-                    self.indice = 0
-                    self.menu_visible = True  # Active le menu
-                else:
-                    self.afficher_message_status("Aucun décor pour ce biome", couleur="red")
-            elif bouton == 1 and not self.mode_ajout_decor:
-                self.menu_visible = True
-                self.choixPossibles = self.tuilesPossibles(i, j)
-                self.caseChoisie = (i, j)
-                self.indice = 0
-                if len(self.choixPossibles) > 0:
-                    self.afficher_message_status(f"Tuiles possibles : {len(self.choixPossibles)}", couleur="green")
-                else:
-                    self.afficher_message_status("Aucune tuile possible", couleur="red")
-            elif bouton == 3:
-                self.retirer(i, j)
-                self.menu_visible = False
-                self.decos_menu_info = None
 
     def dessiner_menu(self):
         if not self.menu_visible:
@@ -568,7 +648,7 @@ class MapMaker:
             elif type_ev(ev) == 'Touche':
                 t = touche(ev)
                 if t == 'a':
-                    if self.generer_carte_aleatoire():
+                    if self.solveur():
                         self.afficher_message_status("Carte remplie correctement !", duree=200, couleur="green")
                     else:
                         self.afficher_message_status("Pas moyen de remplir la carte :(", duree=200, couleur="red")
