@@ -33,6 +33,9 @@ DECORS_PAR_BIOME = {
 
 
 class MapMaker:
+    """
+    Classe principale pour le MapMaker.
+    """
     def __init__(self):
         self.grille = [[None for _ in range(NB_CASES)] for _ in range(NB_CASES)]
         self.tuiles = self.charger_tuiles("tuiles")
@@ -57,7 +60,7 @@ class MapMaker:
         self.origin_y = 0
         self.memo_grille = {}
         self.memo_decors = {}
-        self.menu_sauvegarde = False  # Ajout de l'attribut menu_sauvegarde
+        self.menu_sauvegarde = False
 
     def setMenu(self):
         if self.menu == "acc":
