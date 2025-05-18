@@ -8,10 +8,9 @@ TAILLE_CASE = 64
 NB_CASES = 10
 LARGEUR_FENETRE = NB_CASES * TAILLE_CASE
 HAUTEUR_FENETRE = NB_CASES * TAILLE_CASE
-LARGEUR_BARRE = 200  # Largeur de la barre latérale
+LARGEUR_BARRE = 200
 LARGEUR_TOTALE = LARGEUR_FENETRE + LARGEUR_BARRE
 
-# dico pour mieux comprendre les lettres sur les tuiles
 COTES = {
     'F': 'Forêt',
     'M': 'Montagne',
@@ -24,34 +23,44 @@ COTES = {
     'H': 'Haut de côte'
 }
 
+DECORS_PAR_BIOME = {
+    'S': ["serpent", "ship", "siren", "wave","wave2"],
+    'P': ["black_city", "city", "field", "grass","grass2", "sheep", "village"]
+}
 
 class MapMaker:
     def __init__(self):
-        # la grille sera une liste de listes, initialement vide
         self.grille = [[None for _ in range(NB_CASES)] for _ in range(NB_CASES)]
         self.tuiles = self.charger_tuiles("tuiles")
         self.selection = None
-        self.menuVisible = False
+        self.menu_visible = False
         self.position_menu = (0, 0)
         self.choixPossibles = []
         self.caseChoisie = None
-        self.message_status = ""  # Message de statut
-        self.timer_status = 0  # Compteur pour le message
-        self.couleur_status = "green"  # Couleur par défaut du message
+        self.message_status = ""
+        self.timer_status = 0
+        self.couleur_status = "green"
         self.menu = "acc"
-        # Attributs pour la navigation
+        self.decors = []
+        self.mode_ajout_decor = False
+        self.decos_menu_visible = False
+        self.decos_menu_info = None
         self.indice = 0
         self.nbPages = 0
+        self.deco_indice = 0
+        self.deco_nbPages = 0
+        self.origin_x = 0  # Décalage horizontal (case en haut à gauche affichée)
+        self.origin_y = 0  # Décalage vertical
+        self.memo_grille = {}   # Dictionnaire {(i, j): code_tuile} pour stocker les cases générées
+        self.memo_decors = {}   # Dictionnaire {(i, j): [tuple decors]} pour stocker les décors générés
+
 
     def setMenu(self):
         if self.menu == "acc":
             cree_fenetre(600, 600)
             efface_tout()
-            # Lancer la musique au démarrage
             winsound.PlaySound("media/nouveauTheme.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
-            # Background
             rectangle(0, 0, 600, 600, couleur='sky blue', remplissage='sky blue')
-
             cloud_positions = [
                 (20, 20), (100, 50), (200, 100), (300, 150), (400, 200),
                 (500, 250), (50, 300), (150, 350), (250, 400), (350, 450),
@@ -64,19 +73,11 @@ class MapMaker:
                 (400, 450), (500, 350), (50, 250), (150, 200), (250, 150),
                 (350, 50), (450, 20), (550, 100), (20, 200), (100, 300)
             ]
-
-            # Dessiner les nuages
             for x, y in cloud_positions:
                 image(x, y, "media/cloud.png", largeur=80, hauteur=80, ancrage='nw')
-
-            # Logo et boutons
             image(300, 100, "media/logoMM.png", largeur=300, hauteur=300, ancrage='center')
-
-            # Bouton MapMaker
             rectangle(200, 290, 400, 340, couleur='black', remplissage='white', epaisseur=2)
             texte(300, 315, "MapMaker", couleur='black', taille=16, ancrage='center')
-
-            # Bouton pour activer/désactiver le son
             rectangle(550, 2, 600, 52, couleur='black', remplissage='white', epaisseur=2)
             image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
             isSound = True
@@ -89,10 +90,9 @@ class MapMaker:
                 elif tev == 'ClicGauche':
                     x, y = abscisse(ev), ordonnee(ev)
                     if 200 <= x <= 400 and 340 >= y >= 290:
-                        print("MapMaker")
                         self.menu = "MapMaker"
-                        ferme_fenetre()  # Fermer la fenêtre d'abord
-                        cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)  # Puis créer la nouvelle
+                        ferme_fenetre()
+                        cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)
                         self.boucle_principale()
                         return
                     elif 550 <= x <= 600 and 52 >= y >= 2:
@@ -100,33 +100,19 @@ class MapMaker:
                             isSound = False
                             winsound.PlaySound(None, winsound.SND_ASYNC)
                             efface("isSound")
-                            image(575, 27, "media/stopSound.png", largeur=20, hauteur=20, ancrage='center',
-                                  tag="isSound")
+                            image(575, 27, "media/stopSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
                         else:
                             isSound = True
-                            winsound.PlaySound("media/nouveauTheme.wav",
-                                               winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
+                            winsound.PlaySound("media/nouveauTheme.wav", winsound.SND_FILENAME | winsound.SND_LOOP | winsound.SND_ASYNC)
                             efface("isSound")
                             image(575, 27, "media/goSound.png", largeur=20, hauteur=20, ancrage='center', tag="isSound")
-                            print("Reprise de la musique")
-
-                    print(f"Clic gauche à ({x}, {y})")
-                elif tev == 'ClicDroit':
-                    x, y = abscisse(ev), ordonnee(ev)
-                    print(f"Clic droit à ({x}, {y})")
-                elif tev == 'Touche':
-                    t = touche(ev)
-                    print(f"Touche pressée : {t}")
                 mise_a_jour()
             ferme_fenetre()
         else:
-            # Si ce n'est pas le menu d'accueil, créez directement la fenêtre principale
             cree_fenetre(LARGEUR_TOTALE, HAUTEUR_FENETRE)
             self.boucle_principale()
 
-
     def charger_tuiles(self, dossier):
-        # on scanne le dossier et on prend toutes les images de tuiles valides
         tuiles = {}
         if os.path.exists(dossier):
             for fichier in os.listdir(dossier):
@@ -136,11 +122,8 @@ class MapMaker:
                         tuiles[nom] = os.path.join(dossier, fichier)
         return tuiles
 
-
     def case_ok(self, i, j, code):
-        # regarde si une tuile peut être posée à la position (i, j)
         haut, droite, bas, gauche = code
-
         if i > 0 and self.grille[i - 1][j] is not None:
             if self.grille[i - 1][j][2] != haut:
                 return False
@@ -153,11 +136,9 @@ class MapMaker:
         if j > 0 and self.grille[i][j - 1] is not None:
             if self.grille[i][j - 1][1] != gauche:
                 return False
-
         return True
 
     def tuilesPossibles(self, i, j):
-        # retourne toutes les tuiles qui iraient à cet endroit
         possibles = []
         for t in self.tuiles:
             if self.case_ok(i, j, t):
@@ -165,58 +146,55 @@ class MapMaker:
         return possibles
 
     def poser(self, i, j, code):
-        # pose la tuile si elle va bien
         if self.case_ok(i, j, code):
             self.grille[i][j] = code
             return True
         return False
 
     def retirer(self, i, j):
-        # retire une tuile d'une case
         self.grille[i][j] = None
+        self.decors = [d for d in self.decors if not (d[0] == i and d[1] == j)]
 
-    def remplir_auto(self):
-        # tentative de remplir toute la carte
-        vide = [(i, j) for i in range(NB_CASES) for j in range(NB_CASES) if self.grille[i][j] is None]
-        if not vide:
+    def generer_carte_aleatoire(self):
+        cases_vides = [(ligne, col) for ligne in range(NB_CASES) for col in range(NB_CASES) if self.grille[ligne][col] is None]
+        if not cases_vides:
             return True
+        ligne, col = cases_vides[0]
 
-        i, j = vide[0]
-        essais = self.tuilesPossibles(i, j)
+        # On récupère toutes les tuiles valides pour cette case
+        tuiles_valides = self.tuilesPossibles(ligne, col)
+        # Mélange aléatoire pour casser les patterns répétitifs
+        random.shuffle(tuiles_valides)
+        # Tri pour éviter les tuiles identiques côte à côte (plus esthétique)
+        voisins = []
+        if ligne > 0 and self.grille[ligne-1][col]: voisins.append(self.grille[ligne-1][col])
+        if col > 0 and self.grille[ligne][col-1]: voisins.append(self.grille[ligne][col-1])
+        tuiles_ordonnee = sorted(tuiles_valides, key=lambda tuile: sum(1 for v in voisins if v == tuile))
 
-        for tuile in essais:
-            self.grille[i][j] = tuile
-            if self.remplir_auto():
+        for tuile in tuiles_ordonnee:
+            self.grille[ligne][col] = tuile
+            if self.generer_carte_aleatoire():
                 return True
-            self.grille[i][j] = None  # raté, on revient en arrière
-
+            self.grille[ligne][col] = None
         return False
 
     def afficher_message_status(self, message, duree=100, couleur="green"):
-        """Affiche un message de statut pour une durée donnée avec une couleur."""
         self.message_status = message
         self.timer_status = duree
         self.couleur_status = couleur
 
     def dessiner_message_status(self):
-        """Dessine un rectangle en haut à droite qui reste toujours visible."""
-
-        # Descendre le titre
         texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, 110, "Message Système",
               couleur='black', taille=14, ancrage='center', police='bold')
-
-        # Descendre le rectangle
         rectangle(LARGEUR_FENETRE + 10, 140, LARGEUR_TOTALE - 10, 210, couleur='black', remplissage='white',
                   epaisseur=2)
-
-        # Descendre le message
         if self.timer_status > 0:
             texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, 175, self.message_status,
                   couleur=self.couleur_status, taille=16, ancrage='center', police='bold')
-            self.timer_status -= 1  # Réduit le compteur
+            self.timer_status -= 1
 
     def dessiner(self):
-        # affiche la grille de tuiles
+        # Grille + tuiles
         for i in range(NB_CASES):
             for j in range(NB_CASES):
                 x = j * TAILLE_CASE
@@ -225,51 +203,215 @@ class MapMaker:
                     chemin = self.tuiles[self.grille[i][j]]
                     image(x, y, chemin, largeur=TAILLE_CASE, hauteur=TAILLE_CASE, ancrage='nw')
                 else:
-                    rectangle(x, y, x + TAILLE_CASE, y + TAILLE_CASE, couleur='black', remplissage='light gray',
-                              epaisseur=1)
-
-        # Dessiner la barre latérale
+                    rectangle(x, y, x + TAILLE_CASE, y + TAILLE_CASE, couleur='black', remplissage='light gray', epaisseur=1)
+        
+        # Décors posés
+        for decor in self.decors:
+            i, j, relx, rely, type_decor = decor
+            nom_tuile = self.grille[i][j]
+            if nom_tuile and "S" in nom_tuile:
+                chemin = f"decors/mer/{type_decor}.png"
+            else:
+                chemin = f"decors/terre/{type_decor}.png"
+            x = j * TAILLE_CASE + relx
+            y = i * TAILLE_CASE + rely
+            image(x, y, chemin, largeur=32, hauteur=32, ancrage='center')
+            
+        # Barre latérale
         rectangle(LARGEUR_FENETRE, 0, LARGEUR_TOTALE, HAUTEUR_FENETRE, couleur='black', remplissage='white')
         image((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, 50, "media/logoMM.png", largeur=120, hauteur=120, ancrage='center')
-
-        # Bouton "Ajout Décors"
+        
+        # Bouton Ajout Décors
         rectangle(LARGEUR_FENETRE + 10, HAUTEUR_FENETRE // 2 - 25, LARGEUR_TOTALE - 10, HAUTEUR_FENETRE // 2 + 25,
-                  couleur='black', remplissage='white', epaisseur=2)
+                couleur='black', remplissage='light blue' if self.mode_ajout_decor else 'white', epaisseur=2)
         texte((LARGEUR_FENETRE + LARGEUR_TOTALE) // 2, HAUTEUR_FENETRE // 2, "Ajout Décors",
-              couleur='black', taille=16, ancrage='center')
+            couleur='black', taille=16, ancrage='center')
+            
+        # Menu décor si visible
+        if self.decos_menu_visible and self.decos_menu_info:
+            self.dessiner_menu_decor()
 
-        # Grand rectangle principal
-        rectangle(650, 360, 830, 585, couleur="black", remplissage='white', epaisseur=2)
-        # Lignes horizontales pour diviser en 6 rangées
-        ligne(650, 405, 830, 405, couleur="black", epaisseur=1)  # 1ère ligne horizontale
-        ligne(650, 450, 830, 450, couleur="black", epaisseur=1)  # 2ème ligne horizontale
-        ligne(650, 495, 830, 495, couleur="black", epaisseur=1)  # 3ème ligne horizontale
-        ligne(650, 540, 830, 540, couleur="black", epaisseur=1)  # 4ème ligne horizontale
+    def dessiner_menu_decor(self):
+        i, j, biome, relx, rely = self.decos_menu_info
+        decors = DECORS_PAR_BIOME[biome]
+        n_par_page = 5
+        nbPages = (len(decors) + n_par_page - 1) // n_par_page
+        page_actuelle = self.deco_indice // n_par_page
+        debut = page_actuelle * n_par_page
+        fin = min(debut + n_par_page, len(decors))
+        
+        x0, y0 = LARGEUR_FENETRE + 20, 250
+        rect_w, rect_h = 180, 45 * n_par_page + 60
 
-    def dessiner_menu(self):
-        if not self.menuVisible or not self.choixPossibles:
+        # Rectangle principal
+        rectangle(x0, y0, x0 + rect_w, y0 + rect_h, couleur="black", remplissage="white")
+        texte(x0 + rect_w // 2, y0 + 20, "Choisir un décor", taille=13, couleur="black", ancrage="center")
+
+        # Affichage pagination
+        if nbPages > 1:
+            texte(x0 + rect_w // 2, y0 + 40, f"Page {page_actuelle + 1}/{nbPages}", couleur="black", taille=10, ancrage="center")
+        
+        # Affichage des décors
+        for idx, position in enumerate(range(debut, fin)):
+            decor = decors[position]
+            yb = y0 + 60 + idx * 45
+            rectangle(x0 + 10, yb, x0 + rect_w - 10, yb + 40, couleur='black', remplissage='light gray', epaisseur=1)
+            texte(x0 + 80, yb + 20, decor.capitalize(), couleur='black', taille=12, ancrage='center')
+            if biome == "S":
+                chemin = f"decors/mer/{decor}.png"
+            else:
+                chemin = f"decors/terre/{decor}.png"
+            image(x0 + 28, yb + 20, chemin, largeur=32, hauteur=32, ancrage='center')
+
+        # Flèches pagination
+        if nbPages > 1:
+            # Flèche gauche (page précédente)
+            if page_actuelle > 0:
+                rectangle(x0 + 10, y0 + rect_h - 35, x0 + 50, y0 + rect_h - 10, couleur="black", remplissage="lightgray")
+                polygone([(x0 + 20, y0 + rect_h - 22), (x0 + 40, y0 + rect_h - 32), (x0 + 40, y0 + rect_h - 12)], couleur="black", remplissage="black")
+            # Flèche droite (page suivante)
+            if page_actuelle < nbPages - 1:
+                rectangle(x0 + rect_w - 50, y0 + rect_h - 35, x0 + rect_w - 10, y0 + rect_h - 10, couleur="black", remplissage="lightgray")
+                polygone([(x0 + rect_w - 20, y0 + rect_h - 22), (x0 + rect_w - 40, y0 + rect_h - 32), (x0 + rect_w - 40, y0 + rect_h - 12)], couleur="black", remplissage="black")
+        
+        # Stocke nbPages pour la gestion des clics
+        self.deco_nbPages = nbPages
+
+    def afficheTuilesPossibles(self, x, y, bouton):
+        self.choixPossibles = self.tuilesPossibles(x, y)
+        self.caseChoisie = (x, y)
+        self.indice = 0
+        self.nbPages = (len(self.choixPossibles) + 4) // 5  # 5 tuiles par page
+        self.menu_visible = True
+        if len(self.choixPossibles) > 0:
+            self.afficher_message_status(f"Tuiles possibles : {len(self.choixPossibles)}", duree=200, couleur="green")
+        else:
+            self.afficher_message_status("Aucune tuile possible", duree=200, couleur="red")
+
+    def gerer_clic(self, x, y, bouton):
+        if self.decos_menu_visible and self.decos_menu_info:
+            i, j, biome, relx, rely = self.decos_menu_info
+            decors = DECORS_PAR_BIOME[biome]
+            n_par_page = 5
+            nbPages = (len(decors) + n_par_page - 1) // n_par_page
+            page_actuelle = self.deco_indice // n_par_page
+            debut = page_actuelle * n_par_page
+            fin = min(debut + n_par_page, len(decors))
+            x0, y0 = LARGEUR_FENETRE + 20, 250
+            rect_w, rect_h = 180, 45 * n_par_page + 60
+
+            # Sélection d'un décor
+            for idx, position in enumerate(range(debut, fin)):
+                yb = y0 + 60 + idx * 45
+                if x0 + 10 <= x <= x0 + rect_w - 10 and yb <= y <= yb + 40:
+                    self.decors.append((i, j, relx, rely, decors[position]))
+                    self.afficher_message_status(f"Décor '{decors[position]}' ajouté", couleur="green")
+                    self.decos_menu_visible = False
+                    self.mode_ajout_decor = False
+                    self.deco_indice = 0
+                    return
+
+            # Gestion pagination
+            # Flèche gauche (page précédente)
+            if nbPages > 1 and x0 + 10 <= x <= x0 + 50 and y0 + rect_h - 35 <= y <= y0 + rect_h - 10 and page_actuelle > 0:
+                self.deco_indice = max(0, self.deco_indice - n_par_page)
+                return
+            # Flèche droite (page suivante)
+            if nbPages > 1 and x0 + rect_w - 50 <= x <= x0 + rect_w - 10 and y0 + rect_h - 35 <= y <= y0 + rect_h - 10 and page_actuelle < nbPages - 1:
+                self.deco_indice = min(len(decors) - 1, self.deco_indice + n_par_page)
+                return
+
+            # Clique ailleurs = fermeture
+            self.decos_menu_visible = False
+            self.deco_indice = 0
             return
 
-        # Calculer la page actuelle et les indices
-        page_actuelle = self.indice // 5  # Changé de 6 à 5
-        debut = page_actuelle * 5  # Changé de 6 à 5
-        fin = min(debut + 5, len(self.choixPossibles))  # Changé de 6 à 5
+        # Gestion du bouton Ajout Décors
+        if x >= LARGEUR_FENETRE:
+            if (LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10) and (HAUTEUR_FENETRE // 2 - 25 <= y <= HAUTEUR_FENETRE // 2 + 25):
+                self.mode_ajout_decor = not self.mode_ajout_decor
+                self.decos_menu_visible = False
+                if self.mode_ajout_decor:
+                    self.afficher_message_status("Mode Ajout Décor : Cliquez sur une tuile", couleur="blue")
+                else:
+                    self.afficher_message_status("Mode normal", couleur="green")
+                return
+            # Gestion du menu des tuiles
+            if self.menu_visible and self.caseChoisie:
+                page_actuelle = self.indice // 5
+                debut = page_actuelle * 5
+                fin = min(debut + 5, len(self.choixPossibles))
+                for idx in range(debut, fin):
+                    y_pos = 360 + ((idx - debut) * 45)
+                    if 650 <= x <= 830 and y_pos <= y <= y_pos + 45:
+                        ci, cj = self.caseChoisie
+                        self.poser(ci, cj, self.choixPossibles[idx])
+                        self.menu_visible = False
+                        self.caseChoisie = None
+                        return
+                # Gestion pagination
+                if self.nbPages > 1 and 605 <= y <= 625:
+                    if 660 <= x <= 710 and page_actuelle > 0:
+                        self.indice = max(0, self.indice - 5)
+                        return
+                    elif 770 <= x <= 820 and page_actuelle < self.nbPages - 1:
+                        self.indice = min(len(self.choixPossibles) - 1, self.indice + 5)
+                        return
+            return
+
+        # Gestion de l'ajout de décor
+        if self.mode_ajout_decor:
+            i, j = y // TAILLE_CASE, x // TAILLE_CASE
+            if 0 <= i < NB_CASES and 0 <= j < NB_CASES and self.grille[i][j]:
+                nom_tuile = self.grille[i][j]
+                biomes = set(nom_tuile)
+                biomes_dispo = [b for b in biomes if b in DECORS_PAR_BIOME]
+                if not biomes_dispo:
+                    self.afficher_message_status("Aucun décor pour ce biome", couleur="red")
+                    return
+                biome = biomes_dispo[0]
+                relx = random.randint(16, TAILLE_CASE - 16)
+                rely = random.randint(16, TAILLE_CASE - 16)
+                self.decos_menu_visible = True
+                self.decos_menu_info = (i, j, biome, relx, rely)
+            return
+
+        # Gestion normale: pose ou suppression de tuile
+        i, j = y // TAILLE_CASE, x // TAILLE_CASE
+        if 0 <= i < NB_CASES and 0 <= j < NB_CASES:
+            if bouton == 1:
+                self.afficheTuilesPossibles(i, j, bouton)
+            elif bouton == 3:
+                self.retirer(i, j)
+                self.menu_visible = False
+                self.caseChoisie = None
+
+    def dessiner_menu(self):
+        if not self.menu_visible or not self.choixPossibles:
+            return
+
+        # Grand rectangle principal (650,360 à 830,585)
+        rectangle(650, 360, 830, 585, couleur="black", remplissage='white', epaisseur=2)
+        
+        # Lignes horizontales pour diviser en 5 rangées
+        for i in range(1, 5):
+            ligne(650, 360 + i * 45, 830, 360 + i * 45, couleur="black", epaisseur=1)
+
+        page_actuelle = self.indice // 5
+        debut = page_actuelle * 5
+        fin = min(debut + 5, len(self.choixPossibles))
 
         # Afficher le numéro de page en haut du rectangle
         if self.nbPages > 1:
             texte(740, 352, f"Page {page_actuelle + 1}/{self.nbPages}",
                   couleur='black', taille=10, ancrage='center')
 
-        # Calculer la hauteur de chaque section
-        hauteur_section = (585 - 360) / 5  # Changé pour 5 sections
-
-
         # Afficher les tuiles
         for idx, position in enumerate(range(debut, fin)):
             if position < len(self.choixPossibles):
                 code_tuile = self.choixPossibles[position]
-                y_base = 360 + (idx * hauteur_section)
-                y_centre = y_base + (hauteur_section / 2)
+                y_base = 360 + (idx * 45)
+                y_centre = y_base + 22.5
 
                 texte(665, y_centre, code_tuile, couleur='black', taille=10, ancrage='w')
 
@@ -280,149 +422,49 @@ class MapMaker:
                     except:
                         texte(795, y_centre, "?", couleur='red', taille=16, ancrage='center')
 
-        # Flèches de navigation en bas du rectangle (gauche et droite)
+        # Flèches de navigation en bas du rectangle
         if self.nbPages > 1:
             # Flèche gauche (page précédente)
             if page_actuelle > 0:
-                # Rectangle contenant la flèche gauche
                 rectangle(660, 605, 710, 625, couleur="black", remplissage="lightgray")
-                # Triangle pour la flèche
                 polygone([(670, 615), (680, 605), (680, 625)], couleur="black", remplissage="black")
 
             # Flèche droite (page suivante)
             if page_actuelle < self.nbPages - 1:
-                # Rectangle contenant la flèche droite
                 rectangle(770, 605, 820, 625, couleur="black", remplissage="lightgray")
-                # Triangle pour la flèche
                 polygone([(810, 615), (800, 605), (800, 625)], couleur="black", remplissage="black")
-
-    def afficheTuilesPossibles(self, i, j, bouton):
-        """Prépare l'affichage des tuiles possibles pour une case donnée."""
-        self.choixPossibles = self.tuilesPossibles(i, j)
-        self.caseChoisie = (i, j)
-        self.indice = 0  # Commence à la première page
-        self.nbPages = (len(self.choixPossibles) + 4) // 5  # Changé de 6 à 5
-        self.menuVisible = True
-
-        if len(self.choixPossibles) > 0:
-            self.afficher_message_status(f"Case ({j},{i}): {len(self.choixPossibles)} \n tuiles possibles",
-                                         duree=200, couleur="green")
-        else:
-            self.afficher_message_status("Aucune tuile \n possible",
-                                         duree=200, couleur="red")
-
-    def gerer_clic(self, x, y, bouton):
-        # clic gauche ou droit sur la grille
-        i, j = y // TAILLE_CASE, x // TAILLE_CASE
-
-        # Gestion des flèches de navigation dans le rectangle
-        if self.menuVisible and bouton == 1:
-            page_actuelle = self.indice // 6
-
-            # Vérifier si le clic est sur une des flèches de navigation
-            if 605 <= y <= 625:
-                # Flèche gauche (précédent)
-                if 660 <= x <= 710 and page_actuelle > 0:
-                    self.indice = max(0, self.indice - 6)
-                    return
-
-                # Flèche droite (suivant)
-                if 770 <= x <= 820 and page_actuelle < self.nbPages - 1:
-                    self.indice = min(self.indice + 6, len(self.choixPossibles) - 1)
-                    return
-
-            # Dans la méthode gerer_clic()
-            if 650 <= x <= 830 and 360 <= y <= 585:
-                hauteur_section = (585 - 360) / 5  # Changé pour 5 sections
-                section = int((y - 360) // hauteur_section)
-
-                if 0 <= section < 5:  # Changé de 6 à 5
-                    index_tuile = page_actuelle * 5 + section  # Changé de 6 à 5
-
-                    if index_tuile < len(self.choixPossibles) and self.caseChoisie:
-                        ci, cj = self.caseChoisie
-                        code_tuile = self.choixPossibles[index_tuile]
-
-                        if self.poser(ci, cj, code_tuile):
-                            self.afficher_message_status(f"Tuile {code_tuile} posée", duree=100, couleur="green")
-                        else:
-                            self.afficher_message_status("Impossible de poser cette tuile", duree=100, couleur="red")
-
-                        self.menuVisible = False
-                        self.caseChoisie = None
-                        return
-
-        # Si le clic est sur la grille
-        if 0 <= i < NB_CASES and 0 <= j < NB_CASES and x < LARGEUR_FENETRE:
-            if bouton == 1:  # Clic gauche
-                self.afficheTuilesPossibles(i, j, bouton)
-            elif bouton == 3:  # Clic droit
-                self.retirer(i, j)
-                self.menuVisible = False
-                self.caseChoisie = None
-
-
-        # Si le clic est sur la grille
-        if 0 <= i < NB_CASES and 0 <= j < NB_CASES and x < LARGEUR_FENETRE:
-            if bouton == 1:  # Clic gauche
-                self.afficheTuilesPossibles(i, j, bouton)
-            elif bouton == 3:  # Clic droit
-                self.retirer(i, j)
-                self.menuVisible = False
-                self.caseChoisie = None
-
-
-        # Si le clic est sur la grille
-        if 0 <= i < NB_CASES and 0 <= j < NB_CASES:
-            if bouton == 1:  # Clic gauche
-                self.caseChoisie = (i, j)
-                self.afficheTuilesPossibles(i, j, bouton)
-            elif bouton == 3:  # Clic droit
-                self.retirer(i, j)
-                self.menuVisible = False
-                self.caseChoisie = None
+    
+    
 
     def boucle_principale(self):
-        # tourne tant que la fenêtre est ouverte
         while True:
             efface_tout()
             self.dessiner()
             self.dessiner_menu()
-            self.dessiner_message_status()  # Affiche le message de statut
-
+            self.dessiner_message_status()
+            
             ev = donne_ev()
             if type_ev(ev) == 'Quitte':
                 break
             elif type_ev(ev) == 'ClicGauche':
                 x, y = abscisse(ev), ordonnee(ev)
-                print(x,y)
-                if LARGEUR_FENETRE + 10 <= x <= LARGEUR_TOTALE - 10 and \
-                   HAUTEUR_FENETRE // 2 - 25 <= y <= HAUTEUR_FENETRE // 2 + 25:
-                    print("Bouton 'Ajout Décors' cliqué !")
-                else:
-                    self.gerer_clic(x, y, 1)
+                self.gerer_clic(x, y, 1)
             elif type_ev(ev) == 'ClicDroit':
                 self.gerer_clic(abscisse(ev), ordonnee(ev), 3)
             elif type_ev(ev) == 'Touche':
                 t = touche(ev)
                 if t == 'a':
-                    if self.remplir_auto():
-                        print("Carte remplie correctement !")
-                        self.afficher_message_status("Carte remplie \n correctement !", duree=200, couleur="green")
+                    if self.generer_carte_aleatoire():
+                        self.afficher_message_status("Carte remplie correctement !", duree=200, couleur="green")
                     else:
-                        print("Pas moyen de remplir la carte :(")
-                        self.afficher_message_status("Pas moyen de \n remplir la carte :(", duree=200, couleur="red")
+                        self.afficher_message_status("Pas moyen de remplir la carte :(", duree=200, couleur="red")
                 elif t == 'c':
-                    # Réinitialiser la grille
                     self.grille = [[None for _ in range(NB_CASES)] for _ in range(NB_CASES)]
-                    # Réinitialiser le message de statut
+                    self.decors = []
                     self.message_status = ""
                     self.timer_status = 0
-
             mise_a_jour()
-
         ferme_fenetre()
-
 
 if __name__ == "__main__":
     app = MapMaker()
