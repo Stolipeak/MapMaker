@@ -72,9 +72,9 @@ class MapMaker:
         self.menu_sauvegarde = False
 
 
-###########################################################################
-###    Moteur Graphique : gestion de la coherence de placement de tuiles###
-###########################################################################
+###############################################################################
+###    Moteur Graphique : gestion de la coherence de placement de tuiles    ###
+###############################################################################
 
 
     def chargerTuiles(self, dossier):
